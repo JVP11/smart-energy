@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>User Dashboard - Smart Energy Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>User Dashboard</h1>
+        <p>Welcome, {{ user_name }}. Current tariff: ₹{{ current_tariff }}/kWh</p>
+      </div>
+      <div class="header-btns">
+        <a href="/platform" class="btn btn-outline">Platform</a>
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+    <main class="app-main">
+      <section class="grid">
+        <div class="card">
+          <h2>Add Appliance Usage</h2>
+          {% with messages = get_flashed_messages() %}
+          {% if messages %}
+          <ul>
+            {% for msg in messages %}
+            <li>{{ msg }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% endwith %}
+          <form method="post" action="/user/add_usage">
+            <div class="field-row">
+              <label>Appliance</label>
+              <select name="appliance_id" required>
+                {% for a in appliances %}
+                <option value="{{ a.appliance_id }}">
+                  {{ a.appliance_name }} ({{ a.power_rating_watts }} W)
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field-row">
+              <label>Hours per day</label>
+              <input type="number" name="hours_per_day" value="4" required />
+            </div>
+            <div class="field-row">
+              <label>Number of days</label>
+              <input type="number" name="number_of_days" value="30" required />
+            </div>
+            <button type="submit">Save Usage &amp; Recalculate Bill</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Your Usage Records</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Usage ID</th>
+                <th>Appliance</th>
+                <th>Power (W)</th>
+                <th>Hours/day</th>
+                <th>Days</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in usage_records %}
+              <tr>
+                <td>{{ u.usage_id }}</td>
+                <td>{{ u.appliance_name }}</td>
+                <td>{{ u.power_rating_watts }}</td>
+                <td>{{ u.hours_per_day }}</td>
+                <td>{{ u.number_of_days }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card card-wide">
+          <h2>Your Bills</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Total Units (kWh)</th>
+                <th>Total Cost (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in bills %}
+              <tr>
+                <td>{{ b.bill_date }}</td>
+                <td>{{ b.total_units }}</td>
+                <td>{{ b.total_cost }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

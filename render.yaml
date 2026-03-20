@@ -1,0 +1,14 @@
+# Render Blueprint - deploy at render.com/dashboard
+services:
+  - type: web
+    name: smart-energy-platform
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT dbms:app
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true

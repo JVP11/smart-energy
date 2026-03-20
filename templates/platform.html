@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smart Energy Platform - {{ user_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>⚡ Smart Energy Platform</h1>
+        <p>Welcome, {{ user_name }} • Tariff: ₹{{ current_tariff }}/kWh</p>
+      </div>
+      <div class="header-btns">
+        <a href="/user/dashboard" class="btn btn-outline">Dashboard</a>
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+
+    <nav class="platform-tabs">
+      <button class="tab-btn active" data-tab="load">📐 Load Calculation</button>
+      <button class="tab-btn" data-tab="infra">🔌 Infrastructure</button>
+      <button class="tab-btn" data-tab="energy">📊 Energy Modeling</button>
+      <button class="tab-btn" data-tab="kseb">⚡ KSEB Rules</button>
+      <button class="tab-btn" data-tab="facility">🏢 Facility Management</button>
+    </nav>
+
+    <main class="app-main">
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flash-list">
+        {% for msg in messages %}<li>{{ msg }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% endwith %}
+
+      <!-- Tab 1: Load Calculation (NEC Sizing) -->
+      <section id="tab-load" class="tab-panel active">
+        <div class="card card-wide">
+          <h2>Load Calculation &amp; NEC-Style Sizing</h2>
+          <p>Connected load, demand load, and recommended panel/cable sizing for NEC compliance.</p>
+          <form id="loadCalcForm" class="form-grid">
+            <div class="field-row">
+              <label for="connectedWatts">Connected Load (W)</label>
+              <input type="number" id="connectedWatts" placeholder="e.g. 5000" required />
+            </div>
+            <div class="field-row">
+              <label for="demandFactor">Demand Factor (0–1)</label>
+              <input type="number" id="demandFactor" value="0.8" step="0.01" min="0" max="1" />
+            </div>
+            <div class="field-row">
+              <label for="voltage">Voltage (V)</label>
+              <input type="number" id="voltage" value="230" />
+            </div>
+            <div class="field-row" style="align-self:flex-end">
+              <button type="submit">Calculate</button>
+            </div>
+          </form>
+          <div class="metric-row load-results" id="loadResults" style="margin-top:1.5rem;display:none">
+            <div><span class="metric-label">Connected Load</span><span class="metric-value" id="connLoad">—</span></div>
+            <div><span class="metric-label">Demand Load</span><span class="metric-value" id="demandLoad">—</span></div>
+            <div><span class="metric-label">Suggested Amperage</span><span class="metric-value" id="suggestedAmps">—</span></div>
+            <div><span class="metric-label">Min Panel (A)</span><span class="metric-value" id="panelSize">—</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 2: Infrastructure -->
+      <section id="tab-infra" class="tab-panel">
+        <div class="grid">
+          <div class="card">
+            <h2>Your Facilities</h2>
+            <table>
+              <thead><tr><th>Name</th><th>Type</th><th>Zone</th></tr></thead>
+              <tbody>
+                {% for f in facilities %}
+                <tr><td>{{ f.name }}</td><td>{{ f.type }}</td><td>{{ f.zone }}</td></tr>
+                {% else %}
+                <tr><td colspan="3">No facilities yet. Add one below.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <form method="post" action="/user/add_facility" class="form-grid">
+              <div class="field-row">
+                <label>Facility Name</label>
+                <input type="text" name="name" placeholder="e.g. Main Building" required />
+              </div>
+              <div class="field-row">
+                <label>Type</label>
+                <input type="text" name="type" placeholder="e.g. Building, Substation" />
+              </div>
+              <div class="field-row">
+                <label>Zone</label>
+                <input type="text" name="zone" placeholder="e.g. Zone A" />
+              </div>
+              <div class="field-row" style="align-self:flex-end">
+                <button type="submit">Add Facility</button>
+              </div>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Infrastructure Overview</h2>
+            <p>Power grids, microgrids, substations &amp; facility topology.</p>
+            <div class="metric-row">
+              <div><span class="metric-label">Total Facilities</span><span class="metric-value">{{ facilities|length }}</span></div>
+            </div>
+            <p style="margin-top:1rem"><a href="/map/kerala-power" class="btn btn-primary">🗺️ Kerala Power Map – poles, towers &amp; cables</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: Energy Modeling -->
+      <section id="tab-energy" class="tab-panel">
+        <div class="grid">
+          <div class="card">
+            <h2>Real-Time Bill Estimator</h2>
+            <p>Estimate your bill before the month ends (flat tariff). For KSEB slab-based billing, see <strong>KSEB Rules</strong> tab.</p>
+            <div class="field-row">
+              <label>Estimated Usage (kWh)</label>
+              <input type="number" id="estUsage" value="185" />
+            </div>
+            <div class="metric-row">
+              <div><span class="metric-label">Estimated Bill (flat)</span><span class="metric-value" id="estBill">₹{{ (185 * current_tariff)|int }}</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Add Appliance Usage</h2>
+            <form method="post" action="/user/add_usage">
+              <div class="field-row">
+                <label>Appliance</label>
+                <select name="appliance_id" required>
+                  {% for a in appliances %}
+                  <option value="{{ a.appliance_id }}">{{ a.appliance_name }} ({{ a.power_rating_watts }} W)</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field-row">
+                <label>Hours/day</label>
+                <input type="number" name="hours_per_day" value="4" required />
+              </div>
+              <div class="field-row">
+                <label>Days</label>
+                <input type="number" name="number_of_days" value="30" required />
+              </div>
+              <button type="submit">Save &amp; Recalculate Bill</button>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Appliance Cost Breakdown</h2>
+            <p>Which appliances cost the most.</p>
+            <table>
+              <thead><tr><th>Appliance</th><th>Units (kWh)</th><th>Cost (₹)</th></tr></thead>
+              <tbody>
+                {% for c in appliance_cost_breakdown %}
+                <tr><td>{{ c.appliance_name }}</td><td>{{ c.units_kwh }}</td><td>{{ c.cost }}</td></tr>
+                {% else %}
+                <tr><td colspan="3">Add usage to see breakdown.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h2>Energy Efficiency Recommendations</h2>
+            <ul class="rec-list">
+              {% for r in recommendations %}
+              <li>💡 {{ r }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Smart Usage Planner</h2>
+            <p>Simulate usage before adding.</p>
+            <div class="field-row">
+              <label>Power (W)</label>
+              <input type="number" id="plannerPower" value="1200" />
+            </div>
+            <div class="field-row">
+              <label>Hours/day</label>
+              <input type="number" id="plannerHours" value="6" />
+            </div>
+            <div class="field-row">
+              <label>Days</label>
+              <input type="number" id="plannerDays" value="30" />
+            </div>
+            <div class="metric-row">
+              <div><span class="metric-label">Est. Units</span><span class="metric-value" id="plannerUnits">216 kWh</span></div>
+              <div><span class="metric-label">Est. Cost</span><span class="metric-value" id="plannerCost">₹0</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Appliance Comparison</h2>
+            <p>Compare two appliances.</p>
+            <div class="field-row">
+              <label>Appliance A (W)</label>
+              <input type="number" id="compA" placeholder="e.g. 300" />
+            </div>
+            <div class="field-row">
+              <label>Appliance B (W)</label>
+              <input type="number" id="compB" placeholder="e.g. 60" />
+            </div>
+            <div class="field-row">
+              <label>Hours/day × Days</label>
+              <input type="number" id="compHrs" value="150" placeholder="e.g. 5×30" />
+            </div>
+            <p id="compareResult" class="result-text"></p>
+          </div>
+          <div class="card">
+            <h2>Smart Appliance Recommendation</h2>
+            <p>Upgrade to efficient model?</p>
+            <div class="field-row">
+              <label>Current power (W)</label>
+              <input type="number" id="smartOld" placeholder="e.g. 1200" />
+            </div>
+            <div class="field-row">
+              <label>Efficient power (W)</label>
+              <input type="number" id="smartNew" placeholder="e.g. 800" />
+            </div>
+            <div class="field-row">
+              <label>Hours/day × Days</label>
+              <input type="number" id="smartHrs" value="180" />
+            </div>
+            <p id="smartResult" class="result-text"></p>
+          </div>
+          <div class="card card-wide">
+            <h2>Bill History &amp; Trends</h2>
+            <table>
+              <thead><tr><th>Date</th><th>Units (kWh)</th><th>Cost (₹)</th></tr></thead>
+              <tbody>
+                {% for b in bills %}
+                <tr><td>{{ b.bill_date }}</td><td>{{ b.total_units }}</td><td>{{ b.total_cost }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: KSEB Rules (Kerala State Electricity Board) -->
+      <section id="tab-kseb" class="tab-panel">
+        <div class="grid">
+          <div class="card">
+            <h2>KSEB Bill Estimator</h2>
+            <p>Estimate your bill using KSEB telescopic &amp; non-telescopic slabs (Domestic LT-1A).</p>
+            <div class="field-row">
+              <label>Units (kWh) – bi-monthly</label>
+              <input type="number" id="ksebUnits" value="185" min="0" />
+            </div>
+            <div class="metric-row" id="ksebResults">
+              <div><span class="metric-label">Energy Charge</span><span class="metric-value" id="ksebEnergy">—</span></div>
+              <div><span class="metric-label">Fixed Charge</span><span class="metric-value" id="ksebFixed">—</span></div>
+              <div><span class="metric-label">Fuel Surcharge</span><span class="metric-value" id="ksebFuel">—</span></div>
+              <div><span class="metric-label">Electricity Duty (10%)</span><span class="metric-value" id="ksebDuty">—</span></div>
+              <div><span class="metric-label">Total Bill</span><span class="metric-value" id="ksebTotal">—</span></div>
+            </div>
+          </div>
+          <div class="card card-wide">
+            <h2>KSEB Tariff Rules</h2>
+            <p>Kerala State Electricity Board – Domestic LT-1A (KSERC Tariff Order 2023-24).</p>
+            <ul class="rec-list">
+              {% for r in kseb_rules %}
+              <li>{{ r }}</li>
+              {% endfor %}
+            </ul>
+            <h3 style="margin-top:1rem">Telescopic Slabs (up to 250 units)</h3>
+            <table>
+              <thead><tr><th>Units</th><th>Rate (₹/unit)</th></tr></thead>
+              <tbody>
+                <tr><td>0–50</td><td>₹3.25</td></tr>
+                <tr><td>51–100</td><td>₹4.05</td></tr>
+                <tr><td>101–150</td><td>₹5.10</td></tr>
+                <tr><td>151–200</td><td>₹6.95</td></tr>
+                <tr><td>201–250</td><td>₹8.20</td></tr>
+                <tr><td>Above 250</td><td>₹7.50 (non-telescopic)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 5: Facility Management (Real-time Monitoring) -->
+      <section id="tab-facility" class="tab-panel">
+        <div class="grid">
+          <div class="card">
+            <h2>Current Usage Estimate</h2>
+            <div class="metric-row">
+              <div><span class="metric-label">This Month (est.)</span><span class="metric-value">{{ current_month_kwh }} kWh</span></div>
+              <div><span class="metric-label">Est. Cost</span><span class="metric-value">₹{{ current_month_cost }}</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Household Energy Budget</h2>
+            <form method="post" action="/user/set_budget">
+              <div class="field-row">
+                <label>Monthly Budget (₹)</label>
+                <input type="number" name="budget" placeholder="e.g. 5000" value="{{ user_budget }}" />
+              </div>
+              <button type="submit">Save Budget</button>
+            </form>
+            {% if user_budget %}
+            <div class="metric-row">
+              <div><span class="metric-label">Remaining Budget</span><span class="metric-value">₹{{ remaining_budget }}</span></div>
+            </div>
+            {% endif %}
+          </div>
+          <div class="card">
+            <h2>Carbon Footprint</h2>
+            <p>CO₂ from electricity (0.8 kg/kWh).</p>
+            <div class="metric-row">
+              <div><span class="metric-label">This Period</span><span class="metric-value">{{ carbon_kg }} kg CO₂</span></div>
+            </div>
+          </div>
+          <div class="card card-wide">
+            <h2>Alerts &amp; Monitoring</h2>
+            <div id="alerts">
+              {% if alerts %}
+              {% for a in alerts %}
+              <div class="alert alert-{{ a.type }}">{{ a.message }}</div>
+              {% endfor %}
+              {% else %}
+              <div class="alert alert-ok">✅ No high-usage alerts. Usage is within budget.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const TARIFF = {{ current_tariff }};
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+      document.getElementById('loadCalcForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const conn = parseFloat(document.getElementById('connectedWatts').value) || 0;
+        const df = parseFloat(document.getElementById('demandFactor').value) || 0.8;
+        const v = parseFloat(document.getElementById('voltage').value) || 230;
+        const demand = conn * df;
+        const amps = demand / v;
+        const panel = Math.ceil(amps / 10) * 10;
+        document.getElementById('connLoad').textContent = conn + ' W';
+        document.getElementById('demandLoad').textContent = demand.toFixed(0) + ' W';
+        document.getElementById('suggestedAmps').textContent = amps.toFixed(1) + ' A';
+        document.getElementById('panelSize').textContent = panel + ' A';
+        document.getElementById('loadResults').style.display = 'flex';
+      });
+      // Real-Time Bill Estimator
+      document.getElementById('estUsage')?.addEventListener('input', function() {
+        const kwh = parseFloat(this.value) || 0;
+        document.getElementById('estBill').textContent = '₹' + Math.round(kwh * TARIFF);
+      });
+      // Smart Usage Planner
+      function updatePlanner() {
+        const p = parseFloat(document.getElementById('plannerPower')?.value) || 0;
+        const h = parseFloat(document.getElementById('plannerHours')?.value) || 0;
+        const d = parseFloat(document.getElementById('plannerDays')?.value) || 0;
+        const kwh = (p * h * d) / 1000;
+        const cost = Math.round(kwh * TARIFF);
+        const u = document.getElementById('plannerUnits');
+        const c = document.getElementById('plannerCost');
+        if (u) u.textContent = kwh.toFixed(0) + ' kWh';
+        if (c) c.textContent = '₹' + cost;
+      }
+      ['plannerPower','plannerHours','plannerDays'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updatePlanner);
+      });
+      updatePlanner();
+      // Appliance Comparison
+      function updateCompare() {
+        const a = parseFloat(document.getElementById('compA')?.value) || 0;
+        const b = parseFloat(document.getElementById('compB')?.value) || 0;
+        const hrs = parseFloat(document.getElementById('compHrs')?.value) || 150;
+        const kwhA = (a * hrs) / 1000, kwhB = (b * hrs) / 1000;
+        const costA = kwhA * TARIFF, costB = kwhB * TARIFF;
+        const r = document.getElementById('compareResult');
+        if (r && a && b) r.textContent = 'A: ₹' + Math.round(costA) + ' | B: ₹' + Math.round(costB) + ' | Save ₹' + Math.abs(Math.round(costB - costA)) + ' with ' + (costA < costB ? 'A' : 'B');
+      }
+      ['compA','compB','compHrs'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateCompare);
+      });
+      // Smart Appliance Recommendation
+      function updateSmart() {
+        const oldP = parseFloat(document.getElementById('smartOld')?.value) || 0;
+        const newP = parseFloat(document.getElementById('smartNew')?.value) || 0;
+        const hrs = parseFloat(document.getElementById('smartHrs')?.value) || 180;
+        const r = document.getElementById('smartResult');
+        if (!r || !oldP || !newP || newP >= oldP) return;
+        const kwhSave = ((oldP - newP) * hrs) / 1000;
+        const save = Math.round(kwhSave * TARIFF);
+        r.textContent = 'Estimated savings: ₹' + save + '/month (' + kwhSave.toFixed(1) + ' kWh)';
+      }
+      ['smartOld','smartNew','smartHrs'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateSmart);
+      });
+      // KSEB Bill Estimator
+      function updateKseb() {
+        const units = parseFloat(document.getElementById('ksebUnits')?.value) || 0;
+        if (units <= 0) {
+          ['ksebEnergy','ksebFixed','ksebFuel','ksebDuty','ksebTotal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '—';
+          });
+          return;
+        }
+        fetch('/api/kseb/estimate?units=' + units)
+          .then(r => r.json())
+          .then(b => {
+            document.getElementById('ksebEnergy').textContent = '₹' + b.energy_charge;
+            document.getElementById('ksebFixed').textContent = '₹' + b.fixed_charge;
+            document.getElementById('ksebFuel').textContent = '₹' + b.fuel_surcharge;
+            document.getElementById('ksebDuty').textContent = '₹' + b.electricity_duty;
+            document.getElementById('ksebTotal').textContent = '₹' + b.total;
+          })
+          .catch(() => {
+            ['ksebEnergy','ksebFixed','ksebFuel','ksebDuty','ksebTotal'].forEach(id => {
+              const el = document.getElementById(id);
+              if (el) el.textContent = '—';
+            });
+          });
+      }
+      document.getElementById('ksebUnits')?.addEventListener('input', updateKseb);
+      updateKseb();
+    </script>
+  </body>
+</html>

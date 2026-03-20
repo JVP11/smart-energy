@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login - Smart Energy Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <a href="/" style="color:inherit;text-decoration:none"><h1>⚡ Smart Energy Platform</h1></a>
+        <p>Login to your account</p>
+      </div>
+      <div class="header-btns">
+        <a href="/" class="btn btn-secondary">Home</a>
+        <a href="/register" class="btn btn-primary">Register</a>
+      </div>
+    </header>
+    <main class="app-main auth-page">
+      <section class="grid">
+        <div class="card card-wide">
+          {% with messages = get_flashed_messages() %}
+          {% if messages %}
+          <ul class="flash-list">
+            {% for msg in messages %}<li>{{ msg }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+          {% endwith %}
+          <form method="post">
+            <div class="field-row">
+              <label>Username / Email</label>
+              <input type="text" name="username" required />
+            </div>
+            <div class="field-row">
+              <label>Password</label>
+              <input type="password" name="password" required />
+            </div>
+            <button type="submit">Login</button>
+          </form>
+          <p style="margin-top: 0.75rem; font-size: 0.85rem;">
+            New user? <a href="/register">Register here</a>
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

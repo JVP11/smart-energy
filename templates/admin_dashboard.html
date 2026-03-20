@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin Dashboard - Smart Energy Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>Manage appliances, tariff rates, and monitor user consumption.</p>
+      </div>
+      <div class="header-btns">
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+    <main class="app-main">
+      <section class="grid">
+        <div class="card">
+          <h2>Add Appliance</h2>
+          {% with messages = get_flashed_messages() %}
+          {% if messages %}
+          <ul>
+            {% for msg in messages %}
+            <li>{{ msg }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% endwith %}
+          <form method="post" action="/admin/appliance">
+            <div class="field-row">
+              <label>Appliance Name</label>
+              <input type="text" name="appliance_name" required />
+            </div>
+            <div class="field-row">
+              <label>Power Rating (W)</label>
+              <input type="number" name="power_rating_watts" required />
+            </div>
+            <button type="submit">Add Appliance</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Current Appliances</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Power (W)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in appliances %}
+              <tr>
+                <td>{{ a.appliance_id }}</td>
+                <td>{{ a.appliance_name }}</td>
+                <td>{{ a.power_rating_watts }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Add Tariff</h2>
+          <form method="post" action="/admin/tariff">
+            <div class="field-row">
+              <label>Rate per kWh (₹)</label>
+              <input type="number" name="rate_per_kwh" step="0.01" required />
+            </div>
+            <div class="field-row">
+              <label>Effective Date</label>
+              <input type="date" name="effective_date" required />
+            </div>
+            <button type="submit">Add Tariff</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Tariff History</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Rate (₹/kWh)</th>
+                <th>Effective Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in tariffs %}
+              <tr>
+                <td>{{ t.tariff_id }}</td>
+                <td>{{ t.rate_per_kwh }}</td>
+                <td>{{ t.effective_date }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card card-wide">
+          <h2>User Bills</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Bill ID</th>
+                <th>User</th>
+                <th>Date</th>
+                <th>Units (kWh)</th>
+                <th>Total Cost (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in bills %}
+              <tr>
+                <td>{{ b.bill_id }}</td>
+                <td>{{ b.name }}</td>
+                <td>{{ b.bill_date }}</td>
+                <td>{{ b.total_units }}</td>
+                <td>{{ b.total_cost }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

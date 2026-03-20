@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smart Energy Platform - Industrial Power & Energy Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>⚡ Smart Energy Platform</h1>
+        <p>Industrial-grade load calculation • infrastructure • energy modeling • facility monitoring</p>
+      </div>
+      <div class="header-btns">
+        <a href="/login" class="btn btn-secondary">Login</a>
+        <a href="/register" class="btn btn-primary">Register</a>
+      </div>
+    </header>
+    <main class="app-main">
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flash-list">
+        {% for msg in messages %}<li>{{ msg }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% endwith %}
+
+      <div class="card card-wide platform-intro">
+        <h2>Enterprise Power &amp; Energy Management</h2>
+        <p>Unified platform combining NEC-compliant load sizing, grid infrastructure tracking, consumption modeling, and real-time facility monitoring. Built for facilities, utilities, and energy managers.</p>
+        <div class="platform-pillars">
+          <a href="/login" class="pillar">
+            <span class="pillar-icon">📐</span>
+            <strong>Load Calculation</strong>
+            <span class="pillar-desc">NEC compliance &amp; panel sizing — PowerCalc, Elek, Kopperfield equivalent</span>
+          </a>
+          <a href="/login" class="pillar">
+            <span class="pillar-icon">🔌</span>
+            <strong>Infrastructure</strong>
+            <span class="pillar-desc">Power grids, microgrids &amp; substations — ETAP, Electrisim, nPro</span>
+          </a>
+          <a href="/login" class="pillar">
+            <span class="pillar-icon">📊</span>
+            <strong>Energy Modeling</strong>
+            <span class="pillar-desc">Consumption analysis &amp; trends — IESVE, DesignBuilder, eQUEST</span>
+          </a>
+          <a href="/login" class="pillar">
+            <span class="pillar-icon">🏢</span>
+            <strong>Facility Management</strong>
+            <span class="pillar-desc">Real-time monitoring &amp; alerts — EcoStruxure, BuildTrack</span>
+          </a>
+        </div>
+        <p class="cta"><a href="/register">Create account</a> or <a href="/login">log in</a> to access the platform.</p>
+      </div>
+    </main>
+    <footer class="app-footer">
+      <span>Smart Energy Platform • Industrial power &amp; energy management</span>
+    </footer>
+  </body>
+</html>

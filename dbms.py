@@ -1,0 +1,448 @@
+from datetime import date
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for, flash
+
+from config import get_db
+from kseb import kseb_calculate_bill, KSEB_RULES
+
+
+app = Flask(__name__)
+app.secret_key = __import__("os").environ.get("SECRET_KEY", "change-this-secret-in-production")
+
+
+def ensure_seed_data():
+    """Seed Supabase tables with sensible defaults if empty."""
+    sb = get_db()
+    try:
+        r = sb.table("admins").select("id").limit(1).execute()
+        if not r.data:
+            sb.table("admins").insert({"username": "admin", "password": "admin123"}).execute()
+    except Exception:
+        pass
+    try:
+        r = sb.table("appliances").select("id").limit(1).execute()
+        if not r.data:
+            appliances = [
+                {"appliance_name": "LED Bulb 9W", "power_rating_watts": 9},
+                {"appliance_name": "LED Tube Light 20W", "power_rating_watts": 20},
+                {"appliance_name": "Ceiling Fan", "power_rating_watts": 60},
+                {"appliance_name": "Refrigerator 190L", "power_rating_watts": 180},
+                {"appliance_name": "Refrigerator 300L", "power_rating_watts": 250},
+                {"appliance_name": "1 Ton Inverter AC", "power_rating_watts": 1200},
+                {"appliance_name": "1.5 Ton Inverter AC", "power_rating_watts": 1500},
+                {"appliance_name": "Washing Machine (Front Load)", "power_rating_watts": 500},
+                {"appliance_name": 'LED TV 32"', "power_rating_watts": 60},
+                {"appliance_name": 'LED TV 43"', "power_rating_watts": 90},
+                {"appliance_name": "Laptop Charger", "power_rating_watts": 65},
+                {"appliance_name": "Desktop PC", "power_rating_watts": 200},
+                {"appliance_name": "Water Heater (Geyser)", "power_rating_watts": 2000},
+                {"appliance_name": "Mixer Grinder", "power_rating_watts": 750},
+                {"appliance_name": "Electric Iron", "power_rating_watts": 1000},
+            ]
+            sb.table("appliances").insert(appliances).execute()
+    except Exception:
+        pass
+    try:
+        r = sb.table("tariffs").select("id").limit(1).execute()
+        if not r.data:
+            sb.table("tariffs").insert({"rate_per_kwh": 8.0, "effective_date": date.today().isoformat()}).execute()
+    except Exception:
+        pass
+
+
+def get_current_tariff():
+    sb = get_db()
+    r = sb.table("tariffs").select("rate_per_kwh").order("effective_date", desc=True).limit(1).execute()
+    return r.data[0]["rate_per_kwh"] if r.data else 0
+
+
+@app.route("/")
+def home():
+    if "user_id" in session:
+        return redirect(url_for("user_dashboard"))
+    if "admin_id" in session:
+        return redirect(url_for("admin_dashboard"))
+    return render_template("home.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form["name"]
+        email = request.form["email"]
+        password = request.form["password"]
+        sb = get_db()
+        r = sb.table("users").select("id").eq("email", email).execute()
+        if r.data:
+            flash("This email is already registered. Please log in instead.")
+            return redirect(url_for("login"))
+        sb.table("users").insert({"name": name, "email": email, "password": password}).execute()
+        flash("Registration successful. Please log in.")
+        return redirect(url_for("login"))
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        sb = get_db()
+        r = sb.table("admins").select("*").eq("username", username).execute()
+        if r.data and r.data[0].get("password") == password:
+            session.clear()
+            session["admin_id"] = str(r.data[0]["id"])
+            return redirect(url_for("admin_dashboard"))
+        r = sb.table("users").select("*").eq("email", username).execute()
+        if r.data and r.data[0].get("password") == password:
+            session.clear()
+            session["user_id"] = str(r.data[0]["id"])
+            session["user_name"] = r.data[0].get("name", "")
+            return redirect(url_for("platform"))
+        flash("Invalid credentials.")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("home"))
+
+
+@app.route("/platform")
+def platform():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    return _render_platform(session["user_id"])
+
+
+@app.route("/map/kerala-power")
+def kerala_power_map():
+    """Live map of Kerala power infrastructure (poles, towers, lines) from OpenStreetMap."""
+    user_id = session.get("user_id")
+    return render_template("kerala_power_map.html", user_id=user_id)
+
+
+def _render_platform(user_id):
+    sb = get_db()
+    r = sb.table("appliances").select("*").execute()
+    appliance_docs = r.data or []
+    appliances = [
+        {"appliance_id": str(a["id"]), "appliance_name": a["appliance_name"], "power_rating_watts": a["power_rating_watts"]}
+        for a in appliance_docs
+    ]
+    appliance_map = {str(a["id"]): a for a in appliance_docs}
+
+    r = sb.table("usage").select("*").eq("user_id", user_id).execute()
+    usage_docs = r.data or []
+    tariff = get_current_tariff()
+    usage_records = []
+    appliance_cost_breakdown = []
+    for u in usage_docs:
+        app_doc = appliance_map.get(str(u["appliance_id"]))
+        if app_doc:
+            kwh = (app_doc["power_rating_watts"] * u["hours_per_day"] * u["number_of_days"]) / 1000.0
+            cost = round(kwh * tariff, 0)
+            usage_records.append({
+                "usage_id": str(u["id"]),
+                "appliance_name": app_doc["appliance_name"],
+                "power_rating_watts": app_doc["power_rating_watts"],
+                "hours_per_day": u["hours_per_day"],
+                "number_of_days": u["number_of_days"],
+            })
+            appliance_cost_breakdown.append({
+                "appliance_name": app_doc["appliance_name"],
+                "units_kwh": round(kwh, 1),
+                "cost": cost,
+            })
+
+    r = sb.table("bills").select("*").eq("user_id", user_id).order("bill_date", desc=True).execute()
+    bill_docs = r.data or []
+    bills = [
+        {"bill_id": str(b["id"]), "bill_date": b.get("bill_date", ""), "total_units": b.get("total_units", 0), "total_cost": b.get("total_cost", 0)}
+        for b in bill_docs
+    ]
+
+    r = sb.table("facilities").select("*").eq("user_id", user_id).execute()
+    facilities = r.data or []
+
+    total_kwh = 0.0
+    for u in usage_docs:
+        app_doc = appliance_map.get(str(u["appliance_id"]))
+        if app_doc:
+            total_kwh += (app_doc["power_rating_watts"] * u["hours_per_day"] * u["number_of_days"]) / 1000.0
+    tariff = get_current_tariff()
+    current_month_cost = round(total_kwh * tariff, 0)
+
+    r = sb.table("users").select("monthly_budget").eq("id", user_id).execute()
+    user_budget = (r.data[0].get("monthly_budget") or 0) if r.data else 0
+
+    alerts = []
+    if user_budget and current_month_cost > user_budget:
+        alerts.append({"type": "high", "message": "⚠ Budget exceeded. Current est. cost ₹" + str(int(current_month_cost)) + " vs budget ₹" + str(user_budget) + "."})
+    elif total_kwh > 200:
+        alerts.append({"type": "high", "message": "⚠ High usage detected (" + str(round(total_kwh, 0)) + " kWh this period). Consider reducing AC/heating hours."})
+
+    # High-usage appliance alerts
+    for item in appliance_cost_breakdown:
+        if item["units_kwh"] >= 80:
+            alerts.append({"type": "high", "message": "⚠ " + item["appliance_name"] + " consumed " + str(item["units_kwh"]) + " kWh. Reduce usage or adjust settings."})
+
+    # Energy efficiency recommendations
+    recommendations = [
+        "Replace incandescent bulbs with LED bulbs.",
+        "Set AC to 24°C and limit hours during peak times.",
+        "Turn off appliances completely instead of standby mode.",
+    ]
+    if any("AC" in a["appliance_name"] for a in appliance_cost_breakdown):
+        recommendations.insert(1, "Consider upgrading to Inverter AC for ~30% savings.")
+    if total_kwh > 150:
+        recommendations.append("Use geyser only when needed; switch off after use.")
+
+    return render_template(
+        "platform.html",
+        user_name=session.get("user_name", ""),
+        current_tariff=get_current_tariff(),
+        kseb_rules=KSEB_RULES,
+        appliances=appliances,
+        usage_records=usage_records,
+        bills=bills,
+        facilities=facilities,
+        current_month_kwh=round(total_kwh, 1),
+        current_month_cost=int(current_month_cost),
+        user_budget=user_budget,
+        remaining_budget=int(user_budget - current_month_cost) if user_budget else 0,
+        alerts=alerts,
+        appliance_cost_breakdown=appliance_cost_breakdown,
+        recommendations=recommendations,
+        carbon_kg=round(total_kwh * 0.8, 1),
+    )
+
+
+@app.route("/user/add_facility", methods=["POST"])
+def add_facility():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    sb = get_db()
+    sb.table("facilities").insert({
+        "user_id": session["user_id"],
+        "name": request.form.get("name", ""),
+        "type": request.form.get("type", "Building"),
+        "zone": request.form.get("zone", ""),
+    }).execute()
+    flash("Facility added.")
+    return redirect(url_for("platform"))
+
+
+@app.route("/user/set_budget", methods=["POST"])
+def set_budget():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    budget = float(request.form.get("budget", 0) or 0)
+    sb = get_db()
+    sb.table("users").update({"monthly_budget": budget}).eq("id", session["user_id"]).execute()
+    flash("Budget saved.")
+    return redirect(url_for("platform"))
+
+
+@app.route("/api/overpass")
+def api_overpass():
+    """Proxy Overpass API to avoid CORS. Query in 'q' param."""
+    import json
+    import urllib.request
+    import urllib.parse
+    q = request.args.get("q", "")
+    if not q:
+        return jsonify({"error": "Missing query"}), 400
+    try:
+        req = urllib.request.Request(
+            "https://overpass-api.de/api/interpreter",
+            data=("data=" + urllib.parse.quote(q)).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            data = json.loads(resp.read().decode())
+            return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@app.route("/api/kseb/estimate")
+def api_kseb_estimate():
+    """Return KSEB bill estimate for given units (query param: units)."""
+    units = float(request.args.get("units", 0) or 0)
+    bill = kseb_calculate_bill(units)
+    return jsonify(bill)
+
+
+@app.route("/user/dashboard")
+def user_dashboard():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+    sb = get_db()
+
+    r = sb.table("appliances").select("*").execute()
+    appliance_docs = r.data or []
+    appliances = [
+        {"appliance_id": str(a["id"]), "appliance_name": a["appliance_name"], "power_rating_watts": a["power_rating_watts"]}
+        for a in appliance_docs
+    ]
+    appliance_map = {str(a["id"]): a for a in appliance_docs}
+
+    r = sb.table("usage").select("*").eq("user_id", user_id).execute()
+    usage_docs = r.data or []
+    usage_records = []
+    for u in usage_docs:
+        app_doc = appliance_map.get(str(u["appliance_id"]))
+        if not app_doc:
+            continue
+        usage_records.append({
+            "usage_id": str(u["id"]),
+            "appliance_name": app_doc["appliance_name"],
+            "power_rating_watts": app_doc["power_rating_watts"],
+            "hours_per_day": u["hours_per_day"],
+            "number_of_days": u["number_of_days"],
+        })
+
+    r = sb.table("bills").select("*").eq("user_id", user_id).order("bill_date", desc=True).execute()
+    bill_docs = r.data or []
+    bills = [
+        {"bill_id": str(b["id"]), "bill_date": b.get("bill_date", ""), "total_units": b.get("total_units", 0), "total_cost": b.get("total_cost", 0)}
+        for b in bill_docs
+    ]
+    return render_template(
+        "user_dashboard.html",
+        user_name=session.get("user_name", ""),
+        appliances=appliances,
+        usage_records=usage_records,
+        bills=bills,
+        current_tariff=get_current_tariff(),
+    )
+
+
+@app.route("/user/add_usage", methods=["POST"])
+def add_usage():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    appliance_id = request.form.get("appliance_id")
+    hours_per_day = int(request.form.get("hours_per_day", 0))
+    number_of_days = int(request.form.get("number_of_days", 0))
+
+    sb = get_db()
+    sb.table("usage").insert({
+        "user_id": user_id,
+        "appliance_id": appliance_id,
+        "hours_per_day": hours_per_day,
+        "number_of_days": number_of_days,
+    }).execute()
+
+    r = sb.table("appliances").select("*").execute()
+    appliance_docs = r.data or []
+    appliance_map = {str(a["id"]): a for a in appliance_docs}
+
+    r = sb.table("usage").select("*").eq("user_id", user_id).execute()
+    usage_docs = r.data or []
+    total_kwh = 0.0
+    for u in usage_docs:
+        app_doc = appliance_map.get(str(u["appliance_id"]))
+        if not app_doc:
+            continue
+        power_watts = app_doc["power_rating_watts"]
+        hrs = u["hours_per_day"]
+        days = u["number_of_days"]
+        total_kwh += (power_watts * hrs * days) / 1000.0
+
+    tariff = get_current_tariff()
+    total_cost = total_kwh * tariff
+    today = date.today().isoformat()
+
+    sb.table("bills").insert({
+        "user_id": user_id,
+        "total_units": total_kwh,
+        "total_cost": total_cost,
+        "bill_date": today,
+    }).execute()
+    flash("Usage added and bill recomputed.")
+    return redirect(url_for("user_dashboard"))
+
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+
+    sb = get_db()
+
+    r = sb.table("appliances").select("*").execute()
+    appliance_docs = r.data or []
+    appliances = [
+        {"appliance_id": str(a["id"]), "appliance_name": a["appliance_name"], "power_rating_watts": a["power_rating_watts"]}
+        for a in appliance_docs
+    ]
+
+    r = sb.table("tariffs").select("*").order("effective_date", desc=True).execute()
+    tariff_docs = r.data or []
+    tariffs = [
+        {"tariff_id": str(t["id"]), "rate_per_kwh": t["rate_per_kwh"], "effective_date": t["effective_date"]}
+        for t in tariff_docs
+    ]
+
+    r = sb.table("bills").select("*").order("bill_date", desc=True).execute()
+    bill_docs = r.data or []
+    user_ids = list({str(b["user_id"]) for b in bill_docs})
+    user_map = {}
+    if user_ids:
+        r = sb.table("users").select("id, name").in_("id", user_ids).execute()
+        user_map = {str(u["id"]): u.get("name", "") for u in (r.data or [])}
+
+    bills = [
+        {"bill_id": str(b["id"]), "name": user_map.get(str(b["user_id"]), ""), "bill_date": b.get("bill_date", ""), "total_units": b.get("total_units", 0), "total_cost": b.get("total_cost", 0)}
+        for b in bill_docs
+    ]
+    return render_template(
+        "admin_dashboard.html",
+        appliances=appliances,
+        tariffs=tariffs,
+        bills=bills,
+    )
+
+
+@app.route("/admin/appliance", methods=["POST"])
+def admin_add_appliance():
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    name = request.form.get("appliance_name")
+    power = int(request.form.get("power_rating_watts", 0))
+    sb = get_db()
+    sb.table("appliances").insert({"appliance_name": name, "power_rating_watts": power}).execute()
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/tariff", methods=["POST"])
+def admin_add_tariff():
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    rate = float(request.form.get("rate_per_kwh", 0))
+    effective = request.form.get("effective_date")
+    sb = get_db()
+    sb.table("tariffs").insert({"rate_per_kwh": rate, "effective_date": effective}).execute()
+    return redirect(url_for("admin_dashboard"))
+
+
+# Ensure seed data when Supabase is configured
+if __import__("os").environ.get("SUPABASE_URL") or __import__("os").environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+    try:
+        ensure_seed_data()
+    except Exception:
+        pass
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)
