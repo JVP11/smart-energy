@@ -28,7 +28,7 @@
 3. Connect your GitHub repo
 4. Render will auto-detect `render.yaml`. Or set manually:
    - **Build:** `pip install -r requirements.txt`
-   - **Start:** `gunicorn -b 0.0.0.0:$PORT dbms:app`
+   - **Start:** `gunicorn -b 0.0.0.0:${PORT:-10000} dbms:app`
 5. In **Environment** add:
    - `SUPABASE_URL` = your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY` = your service_role key

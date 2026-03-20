@@ -35,7 +35,7 @@ Replace `YOUR_USERNAME` and `smart-energy` with your actual GitHub username and 
 4. Use these settings:
    - **Name:** smart-energy-platform
    - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn -b 0.0.0.0:$PORT dbms:app`
+   - **Start Command:** `gunicorn -b 0.0.0.0:${PORT:-10000} dbms:app`
 5. Click **Advanced** → **Add Environment Variable** and add:
    - `SUPABASE_URL` = your Supabase URL
    - `SUPABASE_SERVICE_ROLE_KEY` = your service_role key
