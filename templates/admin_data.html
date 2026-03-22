@@ -2,15 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Database Overview - Admin</title>
+    <title>Database Schema — DBMS Project</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      .schema-box { font-family: monospace; font-size: 0.85rem; background: #0f172a; padding: 1rem; border-radius: 8px; overflow-x: auto; white-space: pre; margin: 0.5rem 0; }
+      .fk { color: #38bdf8; }
+      .pk { color: #22c55e; }
+    </style>
   </head>
   <body>
     <header class="app-header">
       <div>
-        <h1>📊 Database Overview</h1>
-        <p>See where your data lives and how much you have.</p>
+        <h1>📊 Database Schema — DBMS Project</h1>
+        <p>Schema design, relationships, normalization.</p>
       </div>
       <div class="header-btns">
         <a href="/admin/dashboard" class="btn btn-secondary">← Dashboard</a>
@@ -19,23 +24,48 @@
     </header>
     <main class="app-main">
       <div class="card card-wide">
-        <h2>Where is the data?</h2>
-        <p>All data is stored in <strong>Supabase</strong> (cloud PostgreSQL). Access it directly:</p>
-        <ol style="margin:1rem 0;padding-left:1.5rem">
-          <li>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase Dashboard</a></li>
-          <li>Open your project</li>
-          <li>Click <strong>Table Editor</strong> to view and edit data</li>
-          <li>Or use <strong>SQL Editor</strong> to run queries</li>
-        </ol>
+        <h2>Entity-Relationship Overview</h2>
+        <p>8 tables with referential integrity. Primary keys (PK), foreign keys (FK), and constraints.</p>
+        <div class="schema-box">admins (PK: id) ──┬── power_reports (FK: admin_id)
+users (PK: id) ─────┬── power_reports (FK: user_id)
+                   ├── usage (FK: user_id) ──► appliances (PK: id)
+                   ├── bills (FK: user_id)
+                   └── facilities (FK: user_id)
+
+tariffs (PK: id) — standalone (rate per kWh)</div>
       </div>
+
       <div class="card card-wide">
-        <h2>Table counts</h2>
+        <h2>Table Definitions</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Columns (PK=primary, FK=foreign)</th>
+              <th>Relationships</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>admins</td><td>id (PK), username (UNIQUE), password</td><td>—</td></tr>
+            <tr><td>users</td><td>id (PK), name, email (UNIQUE), password, monthly_budget</td><td>—</td></tr>
+            <tr><td>appliances</td><td>id (PK), appliance_name, power_rating_watts</td><td>—</td></tr>
+            <tr><td>tariffs</td><td>id (PK), rate_per_kwh, effective_date</td><td>—</td></tr>
+            <tr><td>usage</td><td>id (PK), user_id (FK→users), appliance_id (FK→appliances), hours_per_day, number_of_days</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>bills</td><td>id (PK), user_id (FK→users), total_units, total_cost, bill_date</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>facilities</td><td>id (PK), user_id (FK→users), name, type, zone</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>power_reports</td><td>id (PK), lat, lng, report_type, status, user_id (FK→users), admin_id (FK→admins), created_at</td><td>ON DELETE SET NULL</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card card-wide">
+        <h2>Table Counts (Live Data)</h2>
         <table>
           <thead>
             <tr>
               <th>Table</th>
               <th>Rows</th>
-              <th>What it stores</th>
+              <th>Description</th>
             </tr>
           </thead>
           <tbody>
@@ -47,18 +77,31 @@
             <tr><td>appliances</td><td>{{ counts.get('appliances', 0) }}</td><td>Appliance catalog</td></tr>
             <tr><td>usage</td><td>{{ counts.get('usage', 0) }}</td><td>User appliance usage</td></tr>
             <tr><td>bills</td><td>{{ counts.get('bills', 0) }}</td><td>Bill history</td></tr>
-            <tr><td>facilities</td><td>{{ counts.get('facilities', 0) }}</td><td>User facilities (buildings, zones)</td></tr>
+            <tr><td>facilities</td><td>{{ counts.get('facilities', 0) }}</td><td>User facilities</td></tr>
             <tr><td>tariffs</td><td>{{ counts.get('tariffs', 0) }}</td><td>Tariff rates</td></tr>
+            <tr><td>power_reports</td><td>{{ counts.get('power_reports', 0) }}</td><td>Outage reports / map markers</td></tr>
             {% endif %}
           </tbody>
         </table>
       </div>
+
       <div class="card card-wide">
-        <h2>How to edit data</h2>
+        <h2>Normalization</h2>
         <ul style="margin:0;padding-left:1.5rem">
-          <li><strong>In the app:</strong> Use Edit / Delete buttons on Dashboard (admin) and Platform (user)</li>
-          <li><strong>In Supabase:</strong> Table Editor → click any cell to edit</li>
+          <li><strong>3NF</strong> — Tables are in Third Normal Form (no transitive dependencies)</li>
+          <li><strong>Referential integrity</strong> — Foreign keys enforce valid references</li>
+          <li><strong>UNIQUE constraints</strong> — email (users), username (admins)</li>
         </ul>
+      </div>
+
+      <div class="card card-wide">
+        <h2>Supabase Access</h2>
+        <p>Data is stored in <strong>Supabase</strong> (PostgreSQL).</p>
+        <ol style="margin:1rem 0;padding-left:1.5rem">
+          <li><a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase Dashboard</a> → your project</li>
+          <li><strong>Table Editor</strong> — view and edit data</li>
+          <li><strong>SQL Editor</strong> — run queries</li>
+        </ol>
       </div>
     </main>
   </body>

@@ -67,6 +67,23 @@ INSERT INTO tariffs (rate_per_kwh, effective_date)
 SELECT 8.0, CURRENT_DATE
 WHERE NOT EXISTS (SELECT 1 FROM tariffs LIMIT 1);
 
+-- Power reports: user "no current" reports + admin infrastructure markers (shown on map)
+CREATE TABLE IF NOT EXISTS power_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lat NUMERIC NOT NULL,
+  lng NUMERIC NOT NULL,
+  report_type TEXT NOT NULL DEFAULT 'no_current',
+  description TEXT DEFAULT '',
+  status TEXT DEFAULT 'pending',
+  reporter_type TEXT NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  admin_id UUID REFERENCES admins(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- report_type: no_current, fluctuating, line_damaged, pole_down (user); ok, issue, maintenance (admin)
+-- status: pending, inspected, resolved
+
 -- Seed appliances (only if table is empty)
 DO $$
 BEGIN

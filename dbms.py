@@ -158,7 +158,8 @@ def platform():
 def kerala_power_map():
     """Live map of Kerala power infrastructure (poles, towers, lines) from OpenStreetMap."""
     user_id = session.get("user_id")
-    return render_template("kerala_power_map.html", user_id=user_id)
+    admin_id = session.get("admin_id")
+    return render_template("kerala_power_map.html", user_id=user_id, admin_id=admin_id)
 
 
 def _render_platform(user_id):
@@ -283,6 +284,34 @@ def set_budget():
     return redirect(url_for("platform"))
 
 
+@app.route("/api/geocode")
+def api_geocode():
+    """Search for places (Nominatim) - restricts to Kerala bounding box."""
+    import json
+    import urllib.request
+    import urllib.parse
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+    try:
+        # Kerala bbox: south, west, north, east
+        viewbox = "74.9,8.2,77.3,12.8"
+        url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({
+            "q": q + ", Kerala India",
+            "format": "json",
+            "limit": 8,
+            "viewbox": viewbox,
+            "bounded": 1,
+        })
+        req = urllib.request.Request(url, headers={"User-Agent": "SmartEnergyPlatform/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            return jsonify([{"lat": float(r["lat"]), "lng": float(r["lon"]), "display_name": r.get("display_name", "")} for r in data])
+    except Exception as e:
+        app.logger.warning("Geocode: %s", e)
+        return jsonify([])
+
+
 @app.route("/api/overpass")
 def api_overpass():
     """Proxy Overpass API to avoid CORS. Query in 'q' param."""
@@ -304,6 +333,190 @@ def api_overpass():
             return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+@app.route("/api/map/power-reports")
+def api_power_reports():
+    """Return all power reports (no current, admin markers) for the Kerala map."""
+    try:
+        sb = get_db()
+        r = sb.table("power_reports").select("*").execute()
+        reports = []
+        for row in (r.data or []):
+            reports.append({
+                "id": str(row["id"]),
+                "lat": float(row["lat"]),
+                "lng": float(row["lng"]),
+                "report_type": row.get("report_type", "no_current"),
+                "description": row.get("description", ""),
+                "status": row.get("status", "pending"),
+                "reporter_type": row.get("reporter_type", "user"),
+                "created_at": row.get("created_at", ""),
+            })
+        return jsonify(reports)
+    except Exception as e:
+        if "relation" in str(e).lower() or "does not exist" in str(e).lower():
+            return jsonify([])
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/map/report", methods=["POST"])
+def map_report():
+    """User reports 'no current' or other power issue at a map location."""
+    if "user_id" not in session:
+        return jsonify({"error": "Login required"}), 401
+    data = request.json if request.is_json else None
+    lat = request.form.get("lat") or (data.get("lat") if data else None)
+    lng = request.form.get("lng") or (data.get("lng") if data else None)
+    report_type = request.form.get("report_type") or (data.get("report_type") if data else None) or "no_current"
+    description = request.form.get("description") or (data.get("description") if data else "") or ""
+    if lat is None or lng is None:
+        return jsonify({"error": "Location (lat, lng) required"}), 400
+    try:
+        lat, lng = float(lat), float(lng)
+        sb = get_db()
+        sb.table("power_reports").insert({
+            "lat": lat, "lng": lng, "report_type": report_type, "description": description,
+            "reporter_type": "user", "user_id": session["user_id"], "status": "pending"
+        }).execute()
+        if request.is_json or request.headers.get("Accept") == "application/json":
+            return jsonify({"ok": True, "message": "Report submitted. It will appear on the map for inspection."})
+        flash("Report submitted. It will appear on the map for inspection.")
+        return redirect(url_for("kerala_power_map"))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/map/marker", methods=["POST"])
+def admin_map_marker():
+    """Admin adds infrastructure marker (ok, issue, maintenance) on the map."""
+    wants_json = "application/json" in request.accept_mimetypes
+    if "admin_id" not in session:
+        if wants_json:
+            return jsonify({"error": "Login required"}), 401
+        return redirect(url_for("login"))
+    lat = request.form.get("lat")
+    lng = request.form.get("lng")
+    report_type = request.form.get("report_type", "issue")
+    description = request.form.get("description", "")
+    if not lat or not lng:
+        if wants_json:
+            return jsonify({"error": "Location required"}), 400
+        flash("Location (lat, lng) required.")
+        return redirect(request.referrer or url_for("admin_dashboard"))
+    try:
+        sb = get_db()
+        sb.table("power_reports").insert({
+            "lat": float(lat), "lng": float(lng), "report_type": report_type, "description": description,
+            "reporter_type": "admin", "admin_id": session["admin_id"], "status": "pending"
+        }).execute()
+        if wants_json:
+            return jsonify({"ok": True})
+        flash("Marker added to map.")
+    except Exception as e:
+        if wants_json:
+            return jsonify({"error": str(e)}), 500
+        flash(f"Failed: {str(e)}")
+    return redirect(request.referrer or url_for("admin_dashboard"))
+
+
+@app.route("/admin/map/reports")
+def admin_map_reports():
+    """Analyst dashboard: power reports with stats, breakdowns, filters, export."""
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    status_filter = request.args.get("status", "")
+    type_filter = request.args.get("type", "")
+    try:
+        sb = get_db()
+        r = sb.table("power_reports").select("*").order("created_at", desc=True).execute()
+        rows = r.data or []
+        reports = []
+        for row in rows:
+            rep = {
+                "id": str(row["id"]),
+                "lat": row["lat"],
+                "lng": row["lng"],
+                "report_type": row.get("report_type", ""),
+                "description": row.get("description", ""),
+                "status": row.get("status", "pending"),
+                "reporter_type": row.get("reporter_type", ""),
+                "created_at": str(row.get("created_at", ""))[:19] if row.get("created_at") else "",
+            }
+            if status_filter and rep["status"] != status_filter:
+                continue
+            if type_filter and rep["report_type"] != type_filter:
+                continue
+            reports.append(rep)
+
+        # Analyst stats
+        by_status = {}
+        by_type = {}
+        for row in rows:
+            s = row.get("status", "pending")
+            by_status[s] = by_status.get(s, 0) + 1
+            t = row.get("report_type", "no_current")
+            by_type[t] = by_type.get(t, 0) + 1
+
+        stats = {
+            "total": len(rows),
+            "pending": by_status.get("pending", 0),
+            "inspected": by_status.get("inspected", 0),
+            "resolved": by_status.get("resolved", 0),
+            "by_type": by_type,
+            "by_status": by_status,
+        }
+        return render_template("admin_map_reports.html", reports=reports, stats=stats, error=None)
+    except Exception as e:
+        return render_template("admin_map_reports.html", reports=[], stats={}, error=str(e))
+
+
+@app.route("/admin/map/reports/export")
+def admin_map_reports_export():
+    """Export power reports as CSV for analysts."""
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        r = sb.table("power_reports").select("*").order("created_at", desc=True).execute()
+        rows = r.data or []
+    except Exception:
+        rows = []
+    import csv
+    import io
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["id", "lat", "lng", "report_type", "description", "status", "reporter_type", "created_at"])
+    for row in rows:
+        w.writerow([
+            str(row.get("id", "")),
+            row.get("lat", ""),
+            row.get("lng", ""),
+            row.get("report_type", ""),
+            row.get("description", ""),
+            row.get("status", ""),
+            row.get("reporter_type", ""),
+            str(row.get("created_at", ""))[:19] if row.get("created_at") else "",
+        ])
+    from flask import Response
+    return Response(out.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=power_reports.csv"})
+
+
+@app.route("/admin/map/report/<id>/status", methods=["POST"])
+def admin_report_status(id):
+    """Admin marks report as inspected or resolved."""
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    status = request.form.get("status", "inspected")
+    if status not in ("inspected", "resolved"):
+        status = "inspected"
+    try:
+        sb = get_db()
+        sb.table("power_reports").update({"status": status}).eq("id", id).execute()
+        flash(f"Report marked as {status}.")
+    except Exception as e:
+        flash(f"Failed: {str(e)}")
+    return redirect(request.referrer or url_for("admin_map_reports"))
 
 
 @app.route("/api/kseb/estimate")
@@ -559,9 +772,12 @@ def admin_data():
     sb = get_db()
     counts = {}
     try:
-        for table in ["admins", "users", "appliances", "usage", "bills", "facilities", "tariffs"]:
-            r = sb.table(table).select("*").execute()
-            counts[table] = len(r.data or [])
+        for table in ["admins", "users", "appliances", "usage", "bills", "facilities", "tariffs", "power_reports"]:
+            try:
+                r = sb.table(table).select("*").execute()
+                counts[table] = len(r.data or [])
+            except Exception:
+                counts[table] = 0
     except Exception as e:
         counts = {"error": str(e)}
     return render_template("admin_data.html", counts=counts)
@@ -645,4 +861,6 @@ if __import__("os").environ.get("SUPABASE_URL") or __import__("os").environ.get(
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    port = int(__import__("os").environ.get("PORT", "8000"))
+    print("\n  Open in browser:  http://127.0.0.1:{port}  or  http://localhost:{port}\n".format(port=port))
+    app.run(host="0.0.0.0", port=port, debug=True)
