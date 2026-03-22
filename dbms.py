@@ -312,27 +312,34 @@ def api_geocode():
         return jsonify([])
 
 
+OVERPASS_SERVERS = [
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
+]
+
+
 @app.route("/api/overpass")
 def api_overpass():
-    """Proxy Overpass API to avoid CORS. Query in 'q' param."""
+    """Proxy Overpass API to avoid CORS. Query in 'q' param. Tries multiple servers."""
     import json
     import urllib.request
     import urllib.parse
     q = request.args.get("q", "")
     if not q:
         return jsonify({"error": "Missing query"}), 400
-    try:
-        req = urllib.request.Request(
-            "https://overpass-api.de/api/interpreter",
-            data=("data=" + urllib.parse.quote(q)).encode(),
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read().decode())
-            return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
+    body = ("data=" + urllib.parse.quote(q)).encode()
+    headers = {"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "SmartEnergyPlatform/1.0"}
+    last_err = None
+    for url in OVERPASS_SERVERS:
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode())
+                return jsonify(data)
+        except Exception as e:
+            last_err = e
+            continue
+    return jsonify({"error": str(last_err), "elements": []}), 502
 
 
 @app.route("/api/map/power-reports")
