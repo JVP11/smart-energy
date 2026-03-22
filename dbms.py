@@ -59,6 +59,19 @@ def get_current_tariff():
     return r.data[0]["rate_per_kwh"] if r.data else 0
 
 
+@app.route("/health")
+def health():
+    """Check if Supabase is configured and reachable."""
+    try:
+        sb = get_db()
+        sb.table("admins").select("id").limit(1).execute()
+        return "OK"
+    except RuntimeError as e:
+        return str(e), 503
+    except Exception as e:
+        return str(e), 503
+
+
 @app.route("/")
 def home():
     if "user_id" in session:
@@ -71,17 +84,25 @@ def home():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        password = request.form["password"]
-        sb = get_db()
-        r = sb.table("users").select("id").eq("email", email).execute()
-        if r.data:
-            flash("This email is already registered. Please log in instead.")
+        try:
+            name = request.form["name"]
+            email = request.form["email"]
+            password = request.form["password"]
+            sb = get_db()
+            r = sb.table("users").select("id").eq("email", email).execute()
+            if r.data:
+                flash("This email is already registered. Please log in instead.")
+                return redirect(url_for("login"))
+            sb.table("users").insert({"name": name, "email": email, "password": password}).execute()
+            flash("Registration successful. Please log in.")
             return redirect(url_for("login"))
-        sb.table("users").insert({"name": name, "email": email, "password": password}).execute()
-        flash("Registration successful. Please log in.")
-        return redirect(url_for("login"))
+        except RuntimeError as e:
+            app.logger.error("Config error: %s", e)
+            return "Server misconfigured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Check Render Environment.", 500
+        except Exception as e:
+            app.logger.exception("Register failed: %s", e)
+            msg = str(e) if "relation" in str(e).lower() or "supabase" in str(e).lower() else "Registration failed."
+            return msg, 500
     return render_template("register.html")
 
 
