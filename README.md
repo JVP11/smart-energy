@@ -95,8 +95,9 @@ A **web-based energy management system** for Kerala, built with **Flask** and **
    ```
 3. Run **supabase_schema.sql** in Supabase SQL Editor (Dashboard → SQL Editor)
 4. Run **supabase_migration_power_reports.sql** if power_reports is missing
-5. Start: `python3 dbms.py` (default port 8000)
-6. Open http://127.0.0.1:8000
+5. Run **supabase_migration_load_kseb.sql** if load_calculations and kseb_estimates are missing
+6. Start: `python3 dbms.py` (default port 8000)
+7. Open http://127.0.0.1:8000
 
 Use `PORT=9000 python3 dbms.py` if 8000 is in use.
 

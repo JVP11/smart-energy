@@ -1,3 +1,4 @@
+import math
 from datetime import date
 
 from dotenv import load_dotenv
@@ -534,6 +535,58 @@ def api_kseb_estimate():
     return jsonify(bill)
 
 
+@app.route("/user/save_load_calculation", methods=["POST"])
+def save_load_calculation():
+    """Save Load Calculation result to Supabase."""
+    if "user_id" not in session:
+        return jsonify({"error": "Login required"}), 401
+    try:
+        conn = float(request.form.get("connected_load", 0) or 0)
+        df = float(request.form.get("demand_factor", 0.8) or 0.8)
+        v = float(request.form.get("voltage", 230) or 230)
+        demand = conn * df
+        amps = demand / v if v else 0
+        panel = int(math.ceil(amps / 10) * 10) if amps else 0
+        sb = get_db()
+        sb.table("load_calculations").insert({
+            "user_id": session["user_id"],
+            "connected_load_watts": conn,
+            "demand_factor": df,
+            "voltage": v,
+            "demand_load_watts": demand,
+            "suggested_amps": round(amps, 1),
+            "panel_size_amps": panel,
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/user/save_kseb_estimate", methods=["POST"])
+def save_kseb_estimate():
+    """Save KSEB estimate to Supabase."""
+    if "user_id" not in session:
+        return jsonify({"error": "Login required"}), 401
+    try:
+        units = float(request.form.get("units", 0) or 0)
+        if units <= 0:
+            return jsonify({"error": "Units must be positive"}), 400
+        bill = kseb_calculate_bill(units)
+        sb = get_db()
+        sb.table("kseb_estimates").insert({
+            "user_id": session["user_id"],
+            "units": units,
+            "energy_charge": bill["energy_charge"],
+            "fixed_charge": bill["fixed_charge"],
+            "fuel_surcharge": bill["fuel_surcharge"],
+            "electricity_duty": bill["electricity_duty"],
+            "total": bill["total"],
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/user/dashboard")
 def user_dashboard():
     if "user_id" not in session:
@@ -779,7 +832,7 @@ def admin_data():
     sb = get_db()
     counts = {}
     try:
-        for table in ["admins", "users", "appliances", "usage", "bills", "facilities", "tariffs", "power_reports"]:
+        for table in ["admins", "users", "appliances", "usage", "bills", "facilities", "tariffs", "power_reports", "load_calculations", "kseb_estimates"]:
             try:
                 r = sb.table(table).select("*").execute()
                 counts[table] = len(r.data or [])

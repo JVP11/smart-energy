@@ -54,6 +54,8 @@ tariffs (PK: id) — standalone (rate per kWh)</div>
             <tr><td>bills</td><td>id (PK), user_id (FK→users), total_units, total_cost, bill_date</td><td>ON DELETE CASCADE</td></tr>
             <tr><td>facilities</td><td>id (PK), user_id (FK→users), name, type, zone</td><td>ON DELETE CASCADE</td></tr>
             <tr><td>power_reports</td><td>id (PK), lat, lng, report_type, status, user_id (FK→users), admin_id (FK→admins), created_at</td><td>ON DELETE SET NULL</td></tr>
+            <tr><td>load_calculations</td><td>id (PK), user_id (FK→users), connected_load_watts, demand_factor, voltage, demand_load_watts, suggested_amps, panel_size_amps</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>kseb_estimates</td><td>id (PK), user_id (FK→users), units, energy_charge, fixed_charge, fuel_surcharge, electricity_duty, total</td><td>ON DELETE CASCADE</td></tr>
           </tbody>
         </table>
       </div>
@@ -80,6 +82,8 @@ tariffs (PK: id) — standalone (rate per kWh)</div>
             <tr><td>facilities</td><td>{{ counts.get('facilities', 0) }}</td><td>User facilities</td></tr>
             <tr><td>tariffs</td><td>{{ counts.get('tariffs', 0) }}</td><td>Tariff rates</td></tr>
             <tr><td>power_reports</td><td>{{ counts.get('power_reports', 0) }}</td><td>Outage reports / map markers</td></tr>
+            <tr><td>load_calculations</td><td>{{ counts.get('load_calculations', 0) }}</td><td>Load calc results (NEC sizing)</td></tr>
+            <tr><td>kseb_estimates</td><td>{{ counts.get('kseb_estimates', 0) }}</td><td>KSEB bill estimates</td></tr>
             {% endif %}
           </tbody>
         </table>

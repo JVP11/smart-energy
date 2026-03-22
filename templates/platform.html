@@ -66,6 +66,7 @@
             <div><span class="metric-label">Suggested Amperage</span><span class="metric-value" id="suggestedAmps">—</span></div>
             <div><span class="metric-label">Min Panel (A)</span><span class="metric-value" id="panelSize">—</span></div>
           </div>
+          <p id="loadSaveMsg" style="margin-top:0.5rem;font-size:0.85rem;color:#22c55e;display:none">✓ Saved to database</p>
         </div>
       </section>
 
@@ -264,6 +265,8 @@
               <div><span class="metric-label">Electricity Duty (10%)</span><span class="metric-value" id="ksebDuty">—</span></div>
               <div><span class="metric-label">Total Bill</span><span class="metric-value" id="ksebTotal">—</span></div>
             </div>
+            <button type="button" id="ksebSaveBtn" class="btn btn-secondary" style="margin-top:0.5rem">Save estimate to database</button>
+            <span id="ksebSaveMsg" style="margin-left:0.5rem;font-size:0.85rem;color:#22c55e;display:none">✓ Saved</span>
           </div>
           <div class="card card-wide">
             <h2>KSEB Tariff Rules</h2>
@@ -360,6 +363,15 @@
         document.getElementById('suggestedAmps').textContent = amps.toFixed(1) + ' A';
         document.getElementById('panelSize').textContent = panel + ' A';
         document.getElementById('loadResults').style.display = 'flex';
+        document.getElementById('loadSaveMsg').style.display = 'none';
+        const formData = new FormData();
+        formData.append('connected_load', conn);
+        formData.append('demand_factor', df);
+        formData.append('voltage', v);
+        fetch('/user/save_load_calculation', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(d => { if (d.ok) document.getElementById('loadSaveMsg').style.display = 'inline'; })
+          .catch(() => {});
       });
       // Real-Time Bill Estimator
       document.getElementById('estUsage')?.addEventListener('input', function() {
@@ -437,6 +449,20 @@
       }
       document.getElementById('ksebUnits')?.addEventListener('input', updateKseb);
       updateKseb();
+      document.getElementById('ksebSaveBtn')?.addEventListener('click', () => {
+        const units = parseFloat(document.getElementById('ksebUnits')?.value) || 0;
+        if (units <= 0) { alert('Enter units first.'); return; }
+        const formData = new FormData();
+        formData.append('units', units);
+        fetch('/user/save_kseb_estimate', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(d => {
+            const msg = document.getElementById('ksebSaveMsg');
+            if (d.ok) { msg.textContent = '✓ Saved'; msg.style.display = 'inline'; msg.style.color = '#22c55e'; }
+            else { msg.textContent = d.error || 'Failed'; msg.style.display = 'inline'; msg.style.color = '#ef4444'; }
+          })
+          .catch(() => {});
+      });
     </script>
   </body>
 </html>

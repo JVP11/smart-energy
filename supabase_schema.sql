@@ -84,6 +84,32 @@ CREATE TABLE IF NOT EXISTS power_reports (
 -- report_type: no_current, fluctuating, line_damaged, pole_down (user); ok, issue, maintenance (admin)
 -- status: pending, inspected, resolved
 
+-- Load calculations: NEC-style panel sizing (saved when user calculates)
+CREATE TABLE IF NOT EXISTS load_calculations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  connected_load_watts NUMERIC NOT NULL,
+  demand_factor NUMERIC NOT NULL,
+  voltage NUMERIC NOT NULL,
+  demand_load_watts NUMERIC NOT NULL,
+  suggested_amps NUMERIC NOT NULL,
+  panel_size_amps INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- KSEB estimates: saved when user clicks "Save estimate"
+CREATE TABLE IF NOT EXISTS kseb_estimates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  units NUMERIC NOT NULL,
+  energy_charge NUMERIC NOT NULL,
+  fixed_charge NUMERIC NOT NULL,
+  fuel_surcharge NUMERIC NOT NULL,
+  electricity_duty NUMERIC NOT NULL,
+  total NUMERIC NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Seed appliances (only if table is empty)
 DO $$
 BEGIN
