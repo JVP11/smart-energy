@@ -75,12 +75,20 @@
           <div class="card">
             <h2>Your Facilities</h2>
             <table>
-              <thead><tr><th>Name</th><th>Type</th><th>Zone</th></tr></thead>
+              <thead><tr><th>Name</th><th>Type</th><th>Zone</th><th>Action</th></tr></thead>
               <tbody>
                 {% for f in facilities %}
-                <tr><td>{{ f.name }}</td><td>{{ f.type }}</td><td>{{ f.zone }}</td></tr>
+                <tr>
+                  <td>{{ f.name }}</td><td>{{ f.type }}</td><td>{{ f.zone }}</td>
+                  <td>
+                    <a href="{{ url_for('user_edit_facility', id=f.id) }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem;margin-right:0.25rem">Edit</a>
+                    <form method="post" action="{{ url_for('user_delete_facility', id=f.id) }}" style="display:inline" onsubmit="return confirm('Delete {{ f.name }}?');">
+                      <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem">Delete</button>
+                    </form>
+                  </td>
+                </tr>
                 {% else %}
-                <tr><td colspan="3">No facilities yet. Add one below.</td></tr>
+                <tr><td colspan="4">No facilities yet. Add one below.</td></tr>
                 {% endfor %}
               </tbody>
             </table>

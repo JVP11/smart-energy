@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Edit Usage - Smart Energy Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div><h1>Edit Usage</h1><p>{{ appliance.appliance_name }} ({{ appliance.power_rating_watts }} W)</p></div>
+      <div class="header-btns">
+        <a href="/user/dashboard" class="btn btn-secondary">← Back</a>
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="card" style="max-width:28rem">
+        <form method="post">
+          <div class="field-row">
+            <label>Hours per day</label>
+            <input type="number" name="hours_per_day" value="{{ usage.hours_per_day }}" required />
+          </div>
+          <div class="field-row">
+            <label>Number of days</label>
+            <input type="number" name="number_of_days" value="{{ usage.number_of_days }}" required />
+          </div>
+          <button type="submit">Save Changes</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

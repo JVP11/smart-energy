@@ -58,21 +58,26 @@
           <table>
             <thead>
               <tr>
-                <th>Usage ID</th>
                 <th>Appliance</th>
                 <th>Power (W)</th>
                 <th>Hours/day</th>
                 <th>Days</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {% for u in usage_records %}
               <tr>
-                <td>{{ u.usage_id }}</td>
                 <td>{{ u.appliance_name }}</td>
                 <td>{{ u.power_rating_watts }}</td>
                 <td>{{ u.hours_per_day }}</td>
                 <td>{{ u.number_of_days }}</td>
+                <td>
+                  <a href="{{ url_for('user_edit_usage', id=u.usage_id) }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem;margin-right:0.25rem">Edit</a>
+                  <form method="post" action="{{ url_for('user_delete_usage', id=u.usage_id) }}" style="display:inline" onsubmit="return confirm('Delete this usage record?');">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem">Delete</button>
+                  </form>
+                </td>
               </tr>
               {% endfor %}
             </tbody>

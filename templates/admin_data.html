@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Database Overview - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>📊 Database Overview</h1>
+        <p>See where your data lives and how much you have.</p>
+      </div>
+      <div class="header-btns">
+        <a href="/admin/dashboard" class="btn btn-secondary">← Dashboard</a>
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="card card-wide">
+        <h2>Where is the data?</h2>
+        <p>All data is stored in <strong>Supabase</strong> (cloud PostgreSQL). Access it directly:</p>
+        <ol style="margin:1rem 0;padding-left:1.5rem">
+          <li>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase Dashboard</a></li>
+          <li>Open your project</li>
+          <li>Click <strong>Table Editor</strong> to view and edit data</li>
+          <li>Or use <strong>SQL Editor</strong> to run queries</li>
+        </ol>
+      </div>
+      <div class="card card-wide">
+        <h2>Table counts</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Rows</th>
+              <th>What it stores</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if counts.get('error') %}
+            <tr><td colspan="3" class="alert alert-high">Error: {{ counts.error }}</td></tr>
+            {% else %}
+            <tr><td>admins</td><td>{{ counts.get('admins', 0) }}</td><td>Admin logins</td></tr>
+            <tr><td>users</td><td>{{ counts.get('users', 0) }}</td><td>Registered consumers</td></tr>
+            <tr><td>appliances</td><td>{{ counts.get('appliances', 0) }}</td><td>Appliance catalog</td></tr>
+            <tr><td>usage</td><td>{{ counts.get('usage', 0) }}</td><td>User appliance usage</td></tr>
+            <tr><td>bills</td><td>{{ counts.get('bills', 0) }}</td><td>Bill history</td></tr>
+            <tr><td>facilities</td><td>{{ counts.get('facilities', 0) }}</td><td>User facilities (buildings, zones)</td></tr>
+            <tr><td>tariffs</td><td>{{ counts.get('tariffs', 0) }}</td><td>Tariff rates</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card card-wide">
+        <h2>How to edit data</h2>
+        <ul style="margin:0;padding-left:1.5rem">
+          <li><strong>In the app:</strong> Use Edit / Delete buttons on Dashboard (admin) and Platform (user)</li>
+          <li><strong>In Supabase:</strong> Table Editor → click any cell to edit</li>
+        </ul>
+      </div>
+    </main>
+  </body>
+</html>

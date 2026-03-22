@@ -471,6 +471,171 @@ def admin_add_tariff():
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/appliance/<id>/delete", methods=["POST"])
+def admin_delete_appliance(id):
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        sb.table("appliances").delete().eq("id", id).execute()
+        flash("Appliance deleted.")
+    except Exception as e:
+        if "foreign key" in str(e).lower() or "violates" in str(e).lower():
+            flash("Cannot delete: appliance is in use. Remove usage records first.")
+        else:
+            flash(f"Delete failed: {str(e)}")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/tariff/<id>/delete", methods=["POST"])
+def admin_delete_tariff(id):
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        sb.table("tariffs").delete().eq("id", id).execute()
+        flash("Tariff deleted.")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/bill/<id>/delete", methods=["POST"])
+def admin_delete_bill(id):
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        sb.table("bills").delete().eq("id", id).execute()
+        flash("Bill deleted.")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/appliance/<id>/edit", methods=["GET", "POST"])
+def admin_edit_appliance(id):
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    sb = get_db()
+    if request.method == "POST":
+        name = request.form.get("appliance_name")
+        power = int(request.form.get("power_rating_watts", 0))
+        sb.table("appliances").update({"appliance_name": name, "power_rating_watts": power}).eq("id", id).execute()
+        flash("Appliance updated.")
+        return redirect(url_for("admin_dashboard"))
+    r = sb.table("appliances").select("*").eq("id", id).execute()
+    if not r.data:
+        flash("Appliance not found.")
+        return redirect(url_for("admin_dashboard"))
+    a = r.data[0]
+    return render_template("admin_edit_appliance.html", appliance=a)
+
+
+@app.route("/admin/tariff/<id>/edit", methods=["GET", "POST"])
+def admin_edit_tariff(id):
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    sb = get_db()
+    if request.method == "POST":
+        rate = float(request.form.get("rate_per_kwh", 0))
+        effective = request.form.get("effective_date")
+        sb.table("tariffs").update({"rate_per_kwh": rate, "effective_date": effective}).eq("id", id).execute()
+        flash("Tariff updated.")
+        return redirect(url_for("admin_dashboard"))
+    r = sb.table("tariffs").select("*").eq("id", id).execute()
+    if not r.data:
+        flash("Tariff not found.")
+        return redirect(url_for("admin_dashboard"))
+    t = r.data[0]
+    return render_template("admin_edit_tariff.html", tariff=t)
+
+
+@app.route("/admin/data")
+def admin_data():
+    """Database overview: see all data and where it lives."""
+    if "admin_id" not in session:
+        return redirect(url_for("login"))
+    sb = get_db()
+    counts = {}
+    try:
+        for table in ["admins", "users", "appliances", "usage", "bills", "facilities", "tariffs"]:
+            r = sb.table(table).select("*").execute()
+            counts[table] = len(r.data or [])
+    except Exception as e:
+        counts = {"error": str(e)}
+    return render_template("admin_data.html", counts=counts)
+
+
+@app.route("/user/usage/<id>/edit", methods=["GET", "POST"])
+def user_edit_usage(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    sb = get_db()
+    if request.method == "POST":
+        hours = int(request.form.get("hours_per_day", 0))
+        days = int(request.form.get("number_of_days", 0))
+        sb.table("usage").update({"hours_per_day": hours, "number_of_days": days}).eq("id", id).eq("user_id", user_id).execute()
+        flash("Usage updated.")
+        return redirect(url_for("user_dashboard"))
+    r = sb.table("usage").select("*").eq("id", id).eq("user_id", user_id).execute()
+    if not r.data:
+        flash("Usage record not found.")
+        return redirect(url_for("user_dashboard"))
+    u = r.data[0]
+    r2 = sb.table("appliances").select("*").eq("id", u["appliance_id"]).execute()
+    app = r2.data[0] if r2.data else {}
+    return render_template("user_edit_usage.html", usage=u, appliance=app)
+
+
+@app.route("/user/usage/<id>/delete", methods=["POST"])
+def user_delete_usage(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        sb.table("usage").delete().eq("id", id).eq("user_id", session["user_id"]).execute()
+        flash("Usage record deleted.")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}")
+    return redirect(url_for("user_dashboard"))
+
+
+@app.route("/user/facility/<id>/edit", methods=["GET", "POST"])
+def user_edit_facility(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    sb = get_db()
+    if request.method == "POST":
+        name = request.form.get("name", "")
+        ftype = request.form.get("type", "Building")
+        zone = request.form.get("zone", "")
+        sb.table("facilities").update({"name": name, "type": ftype, "zone": zone}).eq("id", id).eq("user_id", user_id).execute()
+        flash("Facility updated.")
+        return redirect(url_for("platform"))
+    r = sb.table("facilities").select("*").eq("id", id).eq("user_id", user_id).execute()
+    if not r.data:
+        flash("Facility not found.")
+        return redirect(url_for("platform"))
+    f = r.data[0]
+    return render_template("user_edit_facility.html", facility=f)
+
+
+@app.route("/user/facility/<id>/delete", methods=["POST"])
+def user_delete_facility(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    try:
+        sb = get_db()
+        sb.table("facilities").delete().eq("id", id).eq("user_id", session["user_id"]).execute()
+        flash("Facility deleted.")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}")
+    return redirect(url_for("platform"))
+
+
 # Ensure seed data when Supabase is configured
 if __import__("os").environ.get("SUPABASE_URL") or __import__("os").environ.get("SUPABASE_SERVICE_ROLE_KEY"):
     try:

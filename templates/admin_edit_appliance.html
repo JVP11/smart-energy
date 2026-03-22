@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Edit Appliance - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div><h1>Edit Appliance</h1></div>
+      <div class="header-btns">
+        <a href="/admin/dashboard" class="btn btn-secondary">← Back</a>
+        <a href="/logout" class="btn btn-primary">Logout</a>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="card" style="max-width:28rem">
+        <form method="post">
+          <div class="field-row">
+            <label>Appliance Name</label>
+            <input type="text" name="appliance_name" value="{{ appliance.appliance_name }}" required />
+          </div>
+          <div class="field-row">
+            <label>Power Rating (W)</label>
+            <input type="number" name="power_rating_watts" value="{{ appliance.power_rating_watts }}" required />
+          </div>
+          <button type="submit">Save Changes</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

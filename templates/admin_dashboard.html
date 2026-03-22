@@ -16,6 +16,7 @@
         <p>Manage appliances, tariff rates, and monitor user consumption.</p>
       </div>
       <div class="header-btns">
+        <a href="/admin/data" class="btn btn-outline">📊 View Data</a>
         <a href="/logout" class="btn btn-primary">Logout</a>
       </div>
     </header>
@@ -50,17 +51,22 @@
           <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Name</th>
                 <th>Power (W)</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {% for a in appliances %}
               <tr>
-                <td>{{ a.appliance_id }}</td>
                 <td>{{ a.appliance_name }}</td>
                 <td>{{ a.power_rating_watts }}</td>
+                <td>
+                  <a href="{{ url_for('admin_edit_appliance', id=a.appliance_id) }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem;margin-right:0.25rem">Edit</a>
+                  <form method="post" action="{{ url_for('admin_delete_appliance', id=a.appliance_id) }}" style="display:inline" onsubmit="return confirm('Delete {{ a.appliance_name }}?');">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem">Delete</button>
+                  </form>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -87,17 +93,22 @@
           <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Rate (₹/kWh)</th>
                 <th>Effective Date</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {% for t in tariffs %}
               <tr>
-                <td>{{ t.tariff_id }}</td>
                 <td>{{ t.rate_per_kwh }}</td>
                 <td>{{ t.effective_date }}</td>
+                <td>
+                  <a href="{{ url_for('admin_edit_tariff', id=t.tariff_id) }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem;margin-right:0.25rem">Edit</a>
+                  <form method="post" action="{{ url_for('admin_delete_tariff', id=t.tariff_id) }}" style="display:inline" onsubmit="return confirm('Delete this tariff?');">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem">Delete</button>
+                  </form>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -109,21 +120,25 @@
           <table>
             <thead>
               <tr>
-                <th>Bill ID</th>
                 <th>User</th>
                 <th>Date</th>
                 <th>Units (kWh)</th>
                 <th>Total Cost (₹)</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {% for b in bills %}
               <tr>
-                <td>{{ b.bill_id }}</td>
                 <td>{{ b.name }}</td>
                 <td>{{ b.bill_date }}</td>
                 <td>{{ b.total_units }}</td>
                 <td>{{ b.total_cost }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('admin_delete_bill', id=b.bill_id) }}" style="display:inline" onsubmit="return confirm('Delete this bill?');">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem">Delete</button>
+                  </form>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
