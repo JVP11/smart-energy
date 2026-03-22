@@ -4,7 +4,7 @@ services:
     name: smart-energy-platform
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -b 0.0.0.0:${PORT:-10000} app:app
+    startCommand: gunicorn -b 0.0.0.0:${PORT:-10000} dbms:app
     envVars:
       - key: SUPABASE_URL
         sync: false
