@@ -1,4 +1,5 @@
 .env
+local_data.db
 __pycache__/
 *.pyc
 .venv/

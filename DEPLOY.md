@@ -51,7 +51,9 @@ fly deploy
 
 1. Create a project at [supabase.com](https://supabase.com)
 2. Go to **SQL Editor** → New query → paste contents of `supabase_schema.sql` → Run
-3. Go to **Settings → API** → copy Project URL and `service_role` key
+3. Go to **Settings → API** → copy:
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role** key (use the secret key; if `sb_secret_...` format fails with Python, look for a JWT-style `eyJ...` key)
 
 ## Self-hosted (VPS / your server)
 

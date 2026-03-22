@@ -63,8 +63,8 @@ def get_current_tariff():
 def health():
     """Check if Supabase is configured and reachable."""
     try:
-        sb = get_db()
-        sb.table("admins").select("id").limit(1).execute()
+        db = get_db()
+        db.table("admins").select("id").limit(1).execute()
         return "OK"
     except RuntimeError as e:
         return str(e), 503
@@ -109,21 +109,31 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        sb = get_db()
-        r = sb.table("admins").select("*").eq("username", username).execute()
-        if r.data and r.data[0].get("password") == password:
-            session.clear()
-            session["admin_id"] = str(r.data[0]["id"])
-            return redirect(url_for("admin_dashboard"))
-        r = sb.table("users").select("*").eq("email", username).execute()
-        if r.data and r.data[0].get("password") == password:
-            session.clear()
-            session["user_id"] = str(r.data[0]["id"])
-            session["user_name"] = r.data[0].get("name", "")
-            return redirect(url_for("platform"))
-        flash("Invalid credentials.")
+        try:
+            username = request.form.get("username", "")
+            password = request.form.get("password", "")
+            sb = get_db()
+            r = sb.table("admins").select("*").eq("username", username).execute()
+            if r.data and r.data[0].get("password") == password:
+                session.clear()
+                session["admin_id"] = str(r.data[0]["id"])
+                return redirect(url_for("admin_dashboard"))
+            r = sb.table("users").select("*").eq("email", username).execute()
+            if r.data and r.data[0].get("password") == password:
+                session.clear()
+                session["user_id"] = str(r.data[0]["id"])
+                session["user_name"] = r.data[0].get("name", "")
+                return redirect(url_for("platform"))
+            flash("Invalid credentials.")
+        except RuntimeError as e:
+            app.logger.error("Config error: %s", e)
+            return "Server misconfigured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.", 500
+        except Exception as e:
+            app.logger.exception("Login failed: %s", e)
+            err = str(e)
+            if "SUPABASE" in err.upper() or "relation" in err.lower():
+                return err, 500
+            return "Login failed. Check server logs.", 500
     return render_template("login.html")
 
 
@@ -137,7 +147,11 @@ def logout():
 def platform():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    return _render_platform(session["user_id"])
+    try:
+        return _render_platform(session["user_id"])
+    except Exception as e:
+        app.logger.exception("Platform failed: %s", e)
+        return f"Error loading platform: {str(e)}", 500
 
 
 @app.route("/map/kerala-power")
