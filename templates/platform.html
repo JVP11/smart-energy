@@ -21,11 +21,11 @@
     </header>
 
     <nav class="platform-tabs">
-      <button class="tab-btn active" data-tab="load">📐 Load Calculation</button>
-      <button class="tab-btn" data-tab="infra">🔌 Infrastructure</button>
-      <button class="tab-btn" data-tab="energy">📊 Energy Modeling</button>
-      <button class="tab-btn" data-tab="kseb">⚡ KSEB Rules</button>
-      <button class="tab-btn" data-tab="facility">🏢 Facility Management</button>
+      <button class="tab-btn active" data-tab="load" title="Panel sizing, breaker & wire calculation">📐 Load Calculation</button>
+      <button class="tab-btn" data-tab="infra" title="Facilities & Kerala power map">🔌 Infrastructure</button>
+      <button class="tab-btn" data-tab="energy" title="Bill estimates, usage, appliance comparison">📊 Energy Modeling</button>
+      <button class="tab-btn" data-tab="kseb" title="KSEB slab rates & bill estimate">⚡ KSEB Rules</button>
+      <button class="tab-btn" data-tab="facility" title="Budget, alerts, carbon footprint">🏢 Facility Management</button>
     </nav>
 
     <main class="app-main">
@@ -40,11 +40,14 @@
       <!-- Tab 1: Load Calculation (NEC Sizing) -->
       <section id="tab-load" class="tab-panel active">
         <div class="card card-wide">
-          <h2>Load Calculation &amp; NEC-Style Sizing</h2>
-          <p>Connected load, demand load, and recommended panel/cable sizing for NEC compliance.</p>
+          <h2>📐 Load Calculation &amp; NEC-Style Sizing</h2>
+          <p><strong>Used for:</strong> Panel size, wire gauge, breaker rating. Helps avoid overloads and ensures safe wiring.</p>
+          <div class="how-to-steps" style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-panel);border-radius:6px;font-size:0.85rem">
+            <strong>How to use:</strong> 1) Pick connection type (1Φ/2Φ/3Φ) → 2) Enter total connected load in watts → 3) Set demand factor (0.8 typical) → 4) Click Calculate → 5) Use Suggested Amperage for breaker/panel sizing.
+          </div>
           <form id="loadCalcForm" class="form-grid">
             <div class="field-row">
-              <label for="connectionType">Connection Type</label>
+              <label for="connectionType" title="1Φ=residential, 3Φ=commercial">Connection Type</label>
               <select id="connectionType">
                 <option value="single">Single Phase (1Φ)</option>
                 <option value="two">Two Phase (2Φ)</option>
@@ -52,12 +55,12 @@
               </select>
             </div>
             <div class="field-row">
-              <label for="connectedWatts">Connected Load (W)</label>
-              <input type="number" id="connectedWatts" placeholder="e.g. 5000" required />
+              <label for="connectedWatts" title="Sum of all appliance watts">Connected Load (W)</label>
+              <input type="number" id="connectedWatts" placeholder="e.g. 5000" required title="Total watts of all appliances" />
             </div>
             <div class="field-row">
-              <label for="demandFactor">Demand Factor (0–1)</label>
-              <input type="number" id="demandFactor" value="0.8" step="0.01" min="0" max="1" />
+              <label for="demandFactor" title="Typical 0.7–0.9, not everything runs together">Demand Factor (0–1)</label>
+              <input type="number" id="demandFactor" value="0.8" step="0.01" min="0" max="1" title="0.8 = 80% typically" />
             </div>
             <div class="field-row">
               <label for="voltage">Voltage (V)</label>
@@ -99,7 +102,8 @@
       <section id="tab-infra" class="tab-panel">
         <div class="grid">
           <div class="card">
-            <h2>Your Facilities</h2>
+            <h2>🔌 Your Facilities</h2>
+            <p><strong>Used for:</strong> Buildings, zones, substations. Add locations to track.</p>
             <table>
               <thead><tr><th>Name</th><th>Type</th><th>Zone</th><th>Action</th></tr></thead>
               <tbody>
@@ -137,8 +141,8 @@
             </form>
           </div>
           <div class="card">
-            <h2>Infrastructure Overview</h2>
-            <p>Power grids, microgrids, substations &amp; facility topology.</p>
+            <h2>🗺️ Kerala Power Map</h2>
+            <p>Power grids, substations, poles, towers &amp; outage reports. Search places, report no-current.</p>
             <div class="metric-row">
               <div><span class="metric-label">Total Facilities</span><span class="metric-value">{{ facilities|length }}</span></div>
             </div>
@@ -150,9 +154,12 @@
       <!-- Tab 3: Energy Modeling -->
       <section id="tab-energy" class="tab-panel">
         <div class="grid">
+          <div class="card card-wide" style="grid-column:1/-1">
+            <p><strong>Used for:</strong> Bill estimates, appliance usage tracking, cost comparison, energy tips. Add usage in Dashboard, then view breakdown here.</p>
+          </div>
           <div class="card">
-            <h2>Real-Time Bill Estimator</h2>
-            <p>Estimate your bill before the month ends (flat tariff). For KSEB slab-based billing, see <strong>KSEB Rules</strong> tab.</p>
+            <h2>📊 Real-Time Bill Estimator</h2>
+            <p>Estimate your bill (flat tariff). For KSEB slabs, see <strong>KSEB Rules</strong> tab.</p>
             <div class="field-row">
               <label>Estimated Usage (kWh)</label>
               <input type="number" id="estUsage" value="185" />
@@ -277,8 +284,8 @@
       <section id="tab-kseb" class="tab-panel">
         <div class="grid">
           <div class="card">
-            <h2>KSEB Bill Estimator</h2>
-            <p>Estimate your bill using KSEB telescopic &amp; non-telescopic slabs (Domestic LT-1A).</p>
+            <h2>⚡ KSEB Bill Estimator</h2>
+            <p><strong>Used for:</strong> Kerala electricity bill estimate with official KSEB slabs. Enter units (kWh) for bi-monthly reading.</p>
             <div class="field-row">
               <label>Units (kWh) – bi-monthly</label>
               <input type="number" id="ksebUnits" value="185" min="0" />
@@ -320,8 +327,11 @@
       <!-- Tab 5: Facility Management (Real-time Monitoring) -->
       <section id="tab-facility" class="tab-panel">
         <div class="grid">
+          <div class="card card-wide" style="grid-column:1/-1">
+            <p><strong>Used for:</strong> Budget, usage alerts, carbon footprint. Set monthly budget and get warned if you exceed it.</p>
+          </div>
           <div class="card">
-            <h2>Current Usage Estimate</h2>
+            <h2>📊 Current Usage Estimate</h2>
             <div class="metric-row">
               <div><span class="metric-label">This Month (est.)</span><span class="metric-value">{{ current_month_kwh }} kWh</span></div>
               <div><span class="metric-label">Est. Cost</span><span class="metric-value">₹{{ current_month_cost }}</span></div>

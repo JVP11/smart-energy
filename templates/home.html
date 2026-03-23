@@ -10,8 +10,8 @@
   <body>
     <header class="app-header">
       <div>
-        <h1>⚡ Smart Energy Platform</h1>
-        <p>Industrial-grade load calculation • infrastructure • energy modeling • facility monitoring</p>
+        <h1 class="hero-title">⚡ Smart Energy Platform</h1>
+        <p class="hero-subtitle">Industrial-grade load calculation • infrastructure • energy modeling • facility monitoring</p>
       </div>
       <div class="header-btns">
         <button type="button" id="themeToggle" onclick="themeToggle()" aria-label="Switch theme" title="Day / Night">🌙</button>
@@ -29,31 +29,42 @@
       {% endwith %}
 
       <div class="card card-wide platform-intro">
-        <h2>Enterprise Power &amp; Energy Management</h2>
-        <p>Unified platform combining NEC-compliant load sizing, grid infrastructure tracking, consumption modeling, and real-time facility monitoring. Built for facilities, utilities, and energy managers.</p>
+        <h2 class="intro-title">Enterprise Power &amp; Energy Management</h2>
+        <p class="intro-desc">Unified platform combining NEC-compliant load sizing, grid infrastructure tracking, consumption modeling, and real-time facility monitoring. Built for facilities, utilities, and energy managers.</p>
+
+        <div class="how-to-use" style="margin:1.25rem 0;padding:1rem;background:var(--bg-panel);border-radius:6px;border-left:4px solid var(--accent)">
+          <strong>📌 How to use</strong>
+          <ol style="margin:0.5rem 0 0 1.25rem;font-size:0.9rem">
+            <li>Register or log in to access all features</li>
+            <li>Go to Load Calculation to size your panel (single/2/3 phase)</li>
+            <li>Add appliances & usage in Dashboard to estimate bills</li>
+            <li>Open Kerala Power Map to report outages or view infrastructure</li>
+          </ol>
+        </div>
+
         <div class="platform-pillars">
           <a href="/login" class="pillar">
             <span class="pillar-icon">📐</span>
             <strong>Load Calculation</strong>
-            <span class="pillar-desc">NEC compliance &amp; panel sizing — PowerCalc, Elek, Kopperfield equivalent</span>
+            <span class="pillar-desc">Used for: NEC panel sizing, wire gauge, breaker rating. Enter connected load and get recommended amps.</span>
           </a>
           <a href="/login" class="pillar">
             <span class="pillar-icon">🔌</span>
             <strong>Infrastructure</strong>
-            <span class="pillar-desc">Power grids, microgrids &amp; substations — ETAP, Electrisim, nPro</span>
+            <span class="pillar-desc">Used for: Grid topology, facilities, Kerala map. Add buildings/zones and link to power map.</span>
           </a>
           <a href="/login" class="pillar">
             <span class="pillar-icon">📊</span>
             <strong>Energy Modeling</strong>
-            <span class="pillar-desc">Consumption analysis &amp; trends — IESVE, DesignBuilder, eQUEST</span>
+            <span class="pillar-desc">Used for: Bill estimates, appliance comparison, usage planner. Compare costs and save energy.</span>
           </a>
           <a href="/login" class="pillar">
             <span class="pillar-icon">🏢</span>
             <strong>Facility Management</strong>
-            <span class="pillar-desc">Real-time monitoring &amp; alerts — EcoStruxure, BuildTrack</span>
+            <span class="pillar-desc">Used for: Tracking buildings, zones, outage reports. Manage locations and view reports.</span>
           </a>
         </div>
-        <p class="cta"><a href="/register">Create account</a> or <a href="/login">log in</a> to access the platform.</p>
+        <p class="cta"><a href="/register" class="cta-primary">Create account</a> or <a href="/login" class="cta-secondary">log in</a> to access the platform.</p>
       </div>
     </main>
     <footer class="app-footer">

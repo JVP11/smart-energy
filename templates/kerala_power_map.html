@@ -19,18 +19,19 @@
       .power-pole { background: var(--success, #3fb950); }
       .power-substation { background: var(--danger, #f85149); }
       .power-line { background: var(--accent, #2f7cf6); }
-      .map-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bg-panel); color: var(--text); padding: 1.5rem 2rem; border-radius: 6px; border: 1px solid var(--border); z-index: 1000; font-size: 0.9rem; font-family: JetBrains Mono, monospace; }
+      .map-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bg-panel); color: var(--text); padding: 1.5rem 2rem; border-radius: 6px; border: 1px solid var(--border); z-index: 1000; font-size: 0.9rem; font-family: JetBrains Mono, monospace; animation: loadingPulse 1.5s ease-in-out infinite; }
+      @keyframes loadingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       .map-container { position: relative; }
       .map-search { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 0.5rem; max-width: 90%; }
       .map-search input { padding: 0.5rem 1rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.9rem; min-width: 220px; }
       .map-search input:focus { outline: none; border-color: var(--accent); }
       .search-results { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 1001; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; max-height: 200px; overflow-y: auto; min-width: 280px; display: none; box-shadow: 0 4px 12px var(--shadow); }
-      .search-results.show { display: block; }
-      .search-results .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text); }
-      .search-results .item:hover { background: var(--success-light); }
+      .search-results.show { display: block; animation: slideDown 0.25s ease-out; }
+      .search-results .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text); transition: background 0.2s ease, transform 0.2s ease; }
+      .search-results .item:hover { background: var(--success-light); transform: translateX(4px); }
       .map-report-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px var(--shadow); }
       .report-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
-      .reports-data-panel { position: absolute; bottom: 0; left: 0; right: 0; max-height: 45vh; background: var(--bg-panel); border-top: 2px solid var(--success); z-index: 900; overflow: hidden; transition: max-height 0.25s ease; }
+      .reports-data-panel { position: absolute; bottom: 0; left: 0; right: 0; max-height: 45vh; background: var(--bg-panel); border-top: 2px solid var(--success); z-index: 900; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
       .reports-data-panel.collapsed { max-height: 40px; }
       .reports-data-panel .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
       .reports-data-panel .panel-body { padding: 0.75rem; overflow-y: auto; max-height: calc(45vh - 80px); }
@@ -40,7 +41,9 @@
       .reports-table th, .reports-table td { padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
       .reports-table th { font-weight: 600; color: var(--text-muted); }
       .reports-table tr.report-row { cursor: pointer; }
-      .reports-table tr.report-row:hover { background: var(--success-light); }
+      .reports-table tr.report-row { transition: background 0.2s ease, transform 0.15s ease; }
+      .reports-table tr.report-row:hover { background: var(--success-light); transform: translateX(2px); }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
   </head>
   <body>
@@ -59,6 +62,14 @@
 
     <div class="map-header">
       <h1>Power infrastructure &amp; outage reports</h1>
+      <details class="map-how-to" style="margin-top:0.5rem;font-size:0.8rem">
+        <summary style="cursor:pointer;color:var(--accent)">📖 How to use this map</summary>
+        <div style="margin-top:0.4rem;line-height:1.5">
+          <strong>Steps:</strong> 1) Search a place (e.g. Kochi, Trivandrum) or click 📍 for your location. 2) Click markers to see details (substations, towers, poles, lines). 3) {% if user_id %}Click &quot;Report outage&quot; → click map → add description → Submit.{% else %}Log in to report power outages.{% endif %} 4) Use the Reports panel (bottom) to filter and view all reports.
+        </div>
+        <div style="margin-top:0.3rem"><strong>Legend:</strong> 🟠 Towers (high voltage) • 🟢 Poles (distribution) • 🔴 Substations • ⬛ Power lines • Report markers: 🔴 No current, 🟠 Issue, ⚫ Resolved</div>
+        <div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-dim)">Map shows KSEB substations + demo poles/towers. OSM data (when available) overlays from OpenStreetMap.</div>
+      </details>
       <div class="map-legend">
         <span><span class="dot power-tower"></span> Towers</span>
         <span><span class="dot power-pole"></span> Poles</span>
@@ -218,6 +229,19 @@
         [[8.3, 76.9], [8.6, 76.95], [8.9, 77.0], [9.2, 76.9], [9.5, 76.6]],
         [[10.2, 76.2], [10.5, 76.3], [10.8, 76.35], [11.1, 76.5]],
       ];
+      // Demo poles & towers (OSM data sparse in Kerala - these ensure map always shows infrastructure)
+      const DEMO_TOWERS = [
+        { lat: 9.88, lon: 76.84 }, { lat: 9.92, lon: 76.80 }, { lat: 10.00, lon: 76.88 }, { lat: 10.04, lon: 76.68 },
+        { lat: 10.05, lon: 76.50 }, { lat: 9.95, lon: 76.35 }, { lat: 9.94, lon: 76.28 }, { lat: 9.96, lon: 76.37 },
+        { lat: 10.02, lon: 76.95 }, { lat: 9.78, lon: 77.05 }, { lat: 8.55, lon: 76.92 }, { lat: 10.65, lon: 76.28 },
+        { lat: 9.60, lon: 76.55 }, { lat: 10.45, lon: 76.25 }, { lat: 11.00, lon: 76.45 },
+      ];
+      const DEMO_POLES = [
+        { lat: 9.93, lon: 76.26 }, { lat: 9.94, lon: 76.29 }, { lat: 10.00, lon: 76.30 }, { lat: 10.02, lon: 76.36 },
+        { lat: 10.08, lon: 76.34 }, { lat: 10.06, lon: 76.62 }, { lat: 9.98, lon: 76.50 }, { lat: 10.09, lon: 76.93 },
+        { lat: 9.88, lon: 76.70 }, { lat: 9.92, lon: 76.98 }, { lat: 9.72,  lon: 77.08 }, { lat: 8.70, lon: 76.93 },
+        { lat: 9.35, lon: 76.75 }, { lat: 10.35, lon: 76.28 }, { lat: 10.95, lon: 76.40 },
+      ];
 
       function addNode(n, icon, label) {
         const lat = n.lat ?? n.center?.lat;
@@ -231,6 +255,12 @@
         DEMO_SUBSTATIONS.forEach(s => {
           L.marker([s.lat, s.lon], { icon: substationIcon }).addTo(map).bindPopup(`<b>Substation</b><br>${s.name}`);
         });
+        DEMO_TOWERS.forEach(t => {
+          L.marker([t.lat, t.lon], { icon: towerIcon }).addTo(map).bindPopup('<b>Tower</b><br>Transmission tower');
+        });
+        DEMO_POLES.forEach(p => {
+          L.marker([p.lat, p.lon], { icon: poleIcon }).addTo(map).bindPopup('<b>Pole</b><br>Distribution pole');
+        });
         DEMO_LINES.forEach(latln => {
           L.polyline(latln, { color: '#3b82f6', weight: 3, opacity: 0.85 }).addTo(map).bindPopup('<b>Power line</b><br>Transmission / distribution');
         });
@@ -241,7 +271,7 @@
         document.getElementById('mapLoading').style.display = 'none';
         const [s, w, n, e] = [8.2, 74.9, 12.8, 77.3];
         const bbox = `(${s},${w},${n},${e})`;
-        const nodesQuery = `[out:json][timeout:30];(node["power"="tower"]${bbox};node["power"="pole"]${bbox};node["power"="substation"]${bbox};node["power"="station"]${bbox};);out body;`;
+        const nodesQuery = `[out:json][timeout:25];(node["power"="tower"]${bbox};node["power"="pole"]${bbox};node["power"="portal"]${bbox};node["power"="substation"]${bbox};node["power"="station"]${bbox};node["power"="transformer"]${bbox};);out body;`;
         const substationWaysQuery = `[out:json][timeout:30];(way["power"="substation"]${bbox};way["power"="station"]${bbox};);out center;`;
         const linesQuery = `[out:json][timeout:30];(way["power"="line"]${bbox};way["power"="minor_line"]${bbox};way["power"="cable"]${bbox};);out geom;`;
         try {
@@ -255,8 +285,12 @@
           const ways = linesRes.elements || [];
           nodes.forEach(n => {
             if (n.type !== 'node') return;
-            const icon = (n.tags?.power === 'substation' || n.tags?.power === 'station') ? substationIcon : n.tags?.power === 'tower' ? towerIcon : poleIcon;
-            const label = (n.tags?.power === 'substation' || n.tags?.power === 'station') ? 'Substation' : n.tags?.power === 'tower' ? 'Tower' : 'Pole';
+            const p = n.tags?.power;
+            let icon = poleIcon, label = 'Pole';
+            if (p === 'substation' || p === 'station') { icon = substationIcon; label = 'Substation'; }
+            else if (p === 'tower' || p === 'portal') { icon = towerIcon; label = 'Tower'; }
+            else if (p === 'transformer') { icon = poleIcon; label = 'Transformer'; }
+            else if (p === 'pole') { icon = poleIcon; label = 'Pole'; }
             addNode(n, icon, label);
           });
           subWays.forEach(w => {
