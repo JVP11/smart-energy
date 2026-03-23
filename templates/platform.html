@@ -4,9 +4,6 @@
     <meta charset="UTF-8" />
     <title>Smart Energy Platform - {{ user_name }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
@@ -66,7 +63,7 @@
             <div><span class="metric-label">Suggested Amperage</span><span class="metric-value" id="suggestedAmps">—</span></div>
             <div><span class="metric-label">Min Panel (A)</span><span class="metric-value" id="panelSize">—</span></div>
           </div>
-          <p id="loadSaveMsg" style="margin-top:0.5rem;font-size:0.85rem;color:#22c55e;display:none">✓ Saved to database</p>
+          <p id="loadSaveMsg" class="result-saved" style="margin-top:0.5rem;font-size:0.85rem;display:none">✓ Saved to database</p>
         </div>
       </section>
 
@@ -266,7 +263,7 @@
               <div><span class="metric-label">Total Bill</span><span class="metric-value" id="ksebTotal">—</span></div>
             </div>
             <button type="button" id="ksebSaveBtn" class="btn btn-secondary" style="margin-top:0.5rem">Save estimate to database</button>
-            <span id="ksebSaveMsg" style="margin-left:0.5rem;font-size:0.85rem;color:#22c55e;display:none">✓ Saved</span>
+            <span id="ksebSaveMsg" class="result-saved" style="margin-left:0.5rem;font-size:0.85rem;display:none">✓ Saved</span>
           </div>
           <div class="card card-wide">
             <h2>KSEB Tariff Rules</h2>

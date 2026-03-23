@@ -5,33 +5,30 @@
     <title>Kerala Power Map – Report outages, search places</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/style.css" />
     <style>
       #map { height: calc(100vh - 120px); min-height: 400px; width: 100%; }
-      .map-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 0.6rem 1rem; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
-      .map-header h1 { margin: 0; font-size: 1.1rem; }
-      .map-legend { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.8rem; }
+      .map-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--bg-panel); color: var(--text); font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+      .map-header h1 { margin: 0; font-size: 1rem; font-family: JetBrains Mono, monospace; text-transform: uppercase; letter-spacing: 0.05em; }
+      .map-legend { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.75rem; }
       .map-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
-      .map-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+      .map-legend .dot { width: 10px; height: 10px; border-radius: 2px; }
       .map-legend .line-sample { width: 18px; height: 3px; }
-      .power-tower { background: #f59e0b; }
-      .power-pole { background: #22c55e; }
-      .power-substation { background: #ef4444; }
-      .power-line { background: #3b82f6; }
-      .map-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(15,23,42,0.95); color: #e2e8f0; padding: 1.5rem 2rem; border-radius: 8px; z-index: 1000; font-size: 0.95rem; }
+      .power-tower { background: var(--warning, #d29922); }
+      .power-pole { background: var(--success, #3fb950); }
+      .power-substation { background: var(--danger, #f85149); }
+      .power-line { background: var(--accent, #2f7cf6); }
+      .map-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bg-panel); color: var(--text); padding: 1.5rem 2rem; border-radius: 6px; border: 1px solid var(--border); z-index: 1000; font-size: 0.9rem; font-family: JetBrains Mono, monospace; }
       .map-container { position: relative; }
       .map-search { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 0.5rem; max-width: 90%; }
-      .map-search input { padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid #334155; background: #fff; font-size: 0.95rem; min-width: 220px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-      .map-search input:focus { outline: none; border-color: #3b82f6; }
-      .map-search .btn-search { padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; white-space: nowrap; }
-      .map-search .btn-locate { padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 1.1rem; }
-      .search-results { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 1001; background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); max-height: 200px; overflow-y: auto; min-width: 280px; display: none; }
+      .map-search input { padding: 0.5rem 1rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.9rem; min-width: 220px; }
+      .map-search input:focus { outline: none; border-color: var(--accent); }
+      .search-results { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 1001; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; max-height: 200px; overflow-y: auto; min-width: 280px; display: none; box-shadow: 0 4px 12px var(--shadow); }
       .search-results.show { display: block; }
-      .search-results .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
-      .search-results .item:hover { background: #f1f5f9; }
-      .map-report-panel { box-shadow: 0 4px 16px rgba(0,0,0,0.3); border: 1px solid #334155; }
-      .report-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem; }
+      .search-results .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text); }
+      .search-results .item:hover { background: var(--success-light); }
+      .map-report-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px var(--shadow); }
+      .report-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
   </head>
   <body>
@@ -78,7 +75,7 @@
     </div>
 
     {% if admin_id %}
-    <div id="adminPanel" class="map-report-panel" style="display:none;position:absolute;top:70px;right:10px;z-index:1000;background:rgba(15,23,42,0.96);color:#e2e8f0;padding:1rem;border-radius:8px;max-width:280px">
+    <div id="adminPanel" class="map-report-panel" style="display:none;position:absolute;top:70px;right:10px;z-index:1000;padding:1rem;max-width:280px">
       <strong>Add marker</strong>
       <p class="report-hint">Click on map to set location</p>
       <input type="hidden" id="adminLat" />
@@ -100,12 +97,12 @@
     {% endif %}
 
     {% if user_id %}
-    <div id="reportPanel" class="map-report-panel" style="display:none;position:absolute;top:70px;left:10px;z-index:1000;background:rgba(15,23,42,0.96);color:#e2e8f0;padding:1rem;border-radius:8px;max-width:300px">
+    <div id="reportPanel" class="map-report-panel" style="display:none;position:absolute;top:70px;left:10px;z-index:1000;padding:1rem;max-width:300px">
       <strong>⚠ Report power outage</strong>
       <p class="report-hint">1. Search your area above, or 2. Click on map to mark the location</p>
       <input type="hidden" id="reportLat" />
       <input type="hidden" id="reportLng" />
-      <textarea id="reportDesc" placeholder="e.g. No power since morning, transformer may be faulty" rows="2" style="width:100%;margin-top:0.5rem;padding:0.5rem;border-radius:4px;resize:vertical;color:#0f172a"></textarea>
+      <textarea id="reportDesc" placeholder="e.g. No power since morning, transformer may be faulty" rows="2" style="width:100%;margin-top:0.5rem;padding:0.5rem;border-radius:4px;resize:vertical"></textarea>
       <div style="margin-top:0.5rem;display:flex;gap:0.5rem">
         <button type="button" id="reportSubmit" class="btn btn-primary" style="padding:0.35rem 0.75rem">Submit report</button>
         <button type="button" id="reportCancel" class="btn btn-secondary" style="padding:0.35rem 0.75rem">Cancel</button>

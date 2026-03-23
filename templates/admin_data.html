@@ -6,15 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/static/style.css" />
     <style>
-      .schema-box { font-family: monospace; font-size: 0.85rem; background: #0f172a; padding: 1rem; border-radius: 8px; overflow-x: auto; white-space: pre; margin: 0.5rem 0; }
-      .fk { color: #38bdf8; }
-      .pk { color: #22c55e; }
+      .schema-box { font-family: JetBrains Mono, monospace; font-size: 0.8rem; background: var(--bg-panel); padding: 1rem; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto; white-space: pre; margin: 0.5rem 0; letter-spacing: 0.02em; }
+      .schema-box .fk { color: var(--accent); }
+      .schema-box .pk { color: var(--success); }
     </style>
   </head>
   <body>
     <header class="app-header">
       <div>
-        <h1>📊 Database Schema — DBMS Project</h1>
+        <h1 Database Schema — DBMS Project</h1>
         <p>Schema design, relationships, normalization.</p>
       </div>
       <div class="header-btns">

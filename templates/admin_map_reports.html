@@ -7,16 +7,15 @@
     <link rel="stylesheet" href="/static/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-      .analyst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-      .analyst-card { background: #1e293b; border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid #334155; }
-      .analyst-card .value { font-size: 1.75rem; font-weight: 700; color: #22c55e; }
-      .analyst-card .label { font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem; }
-      .analyst-card.pending .value { color: #f59e0b; }
-      .analyst-card.resolved .value { color: #6b7280; }
-      .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
-      .chart-box { background: #1e293b; border-radius: 8px; padding: 1rem; height: 220px; border: 1px solid #334155; }
+      .analyst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+      .analyst-card { background: var(--bg-card); border-radius: 6px; padding: 1rem; text-align: center; border: 1px solid var(--border); font-family: JetBrains Mono, monospace; }
+      .analyst-card .value { font-size: 1.6rem; font-weight: 700; color: var(--success); }
+      .analyst-card .label { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .analyst-card.pending .value { color: var(--warning); }
+      .analyst-card.resolved .value { color: var(--text-dim); }
+      .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+      .chart-box { background: var(--bg-card); border-radius: 6px; padding: 1rem; height: 220px; border: 1px solid var(--border); }
       .filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
-      .filter-bar select { padding: 0.4rem 0.75rem; border-radius: 6px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
     </style>
   </head>
   <body>
