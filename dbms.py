@@ -570,8 +570,14 @@ def save_load_calculation():
         conn = float(request.form.get("connected_load", 0) or 0)
         df = float(request.form.get("demand_factor", 0.8) or 0.8)
         v = float(request.form.get("voltage", 230) or 230)
+        conn_type = request.form.get("connection_type", "single") or "single"
         demand = conn * df
-        amps = demand / v if v else 0
+        if conn_type == "single":
+            amps = demand / v if v else 0
+        elif conn_type == "two":
+            amps = demand / (2 * v) if v else 0
+        else:  # three phase
+            amps = demand / (math.sqrt(3) * v) if v else 0
         panel = int(math.ceil(amps / 10) * 10) if amps else 0
         sb = get_db()
         sb.table("load_calculations").insert({
