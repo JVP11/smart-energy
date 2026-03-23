@@ -5,6 +5,7 @@
     <title>Power Line Analyst – Smart Energy</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
       .analyst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
@@ -25,6 +26,7 @@
         <p>Track outages, inspect line issues, export data</p>
       </div>
       <div class="header-btns">
+        <button type="button" id="themeToggle" onclick="themeToggle()" aria-label="Switch theme" title="Day / Night"></button>
         <a href="/map/kerala-power" class="btn btn-primary">🗺️ Map</a>
         <a href="/admin/map/reports/export" class="btn btn-outline">📥 Export CSV</a>
         <a href="/admin/dashboard" class="btn btn-secondary">← Dashboard</a>

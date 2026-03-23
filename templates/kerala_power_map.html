@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/theme.js"></script>
     <style>
       #map { height: calc(100vh - 120px); min-height: 400px; width: 100%; }
       .map-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--bg-panel); color: var(--text); font-size: 0.85rem; border-bottom: 1px solid var(--border); }
@@ -29,6 +30,17 @@
       .search-results .item:hover { background: var(--success-light); }
       .map-report-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px var(--shadow); }
       .report-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .reports-data-panel { position: absolute; bottom: 0; left: 0; right: 0; max-height: 45vh; background: var(--bg-panel); border-top: 2px solid var(--success); z-index: 900; overflow: hidden; transition: max-height 0.25s ease; }
+      .reports-data-panel.collapsed { max-height: 40px; }
+      .reports-data-panel .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+      .reports-data-panel .panel-body { padding: 0.75rem; overflow-y: auto; max-height: calc(45vh - 80px); }
+      .reports-filter { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; align-items: center; }
+      .reports-filter select { width: auto; min-width: 120px; padding: 0.35rem 0.5rem; }
+      .reports-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
+      .reports-table th, .reports-table td { padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+      .reports-table th { font-weight: 600; color: var(--text-muted); }
+      .reports-table tr.report-row { cursor: pointer; }
+      .reports-table tr.report-row:hover { background: var(--success-light); }
     </style>
   </head>
   <body>
@@ -38,6 +50,7 @@
         <p>Search places, report power outages, view infrastructure</p>
       </div>
       <div class="header-btns">
+        <button type="button" id="themeToggle" onclick="themeToggle()" aria-label="Switch theme" title="Day / Night"></button>
         {% if admin_id %}<a href="/admin/map/reports" class="btn btn-outline">⚡ Manage Reports</a>{% endif %}
         <a href="{% if admin_id %}/admin/dashboard{% else %}/platform{% endif %}" class="btn btn-outline">← Back</a>
         {% if user_id or admin_id %}<a href="/logout" class="btn btn-primary">Logout</a>{% endif %}
@@ -72,6 +85,38 @@
       <div id="searchResults" class="search-results"></div>
       <div id="map"></div>
       <div id="mapLoading" class="map-loading">Loading map…</div>
+      <div id="reportsDataPanel" class="reports-data-panel collapsed">
+        <div class="panel-header" onclick="document.getElementById('reportsDataPanel').classList.toggle('collapsed')">
+          <span>📋 Reports Data — Place, Issues, Status</span>
+          <span id="reportsCount">0</span>
+        </div>
+        <div class="panel-body">
+          <div class="reports-filter">
+            <label style="font-size:0.75rem">Filter by status:</label>
+            <select id="reportsStatusFilter">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="inspected">Inspected</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <label style="font-size:0.75rem">Filter by type:</label>
+            <select id="reportsTypeFilter">
+              <option value="">All</option>
+              <option value="no_current">No current</option>
+              <option value="issue">Issue</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="ok">OK</option>
+              <option value="fluctuating">Fluctuating</option>
+              <option value="line_damaged">Line damaged</option>
+              <option value="pole_down">Pole down</option>
+            </select>
+          </div>
+          <table class="reports-table">
+            <thead><tr><th>Place / Location</th><th>Type</th><th>Issue</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="reportsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     {% if admin_id %}
@@ -235,19 +280,71 @@
         return L.divIcon({ className: 'power-report-marker', html: `<span style="width:14px;height:14px;border-radius:50%;background:${c};border:2px solid #fff;display:block;margin:-7px 0 0 -7px;box-shadow:0 0 4px rgba(0,0,0,0.5)"></span>`, iconSize: [14, 14] });
       };
 
+      let allReports = [];
+      const reportMarkersLayer = L.layerGroup().addTo(map);
+
+      function formatDate(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        return isNaN(d) ? s : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function applyReportFilters() {
+        const statusFilter = document.getElementById('reportsStatusFilter').value;
+        const typeFilter = document.getElementById('reportsTypeFilter').value;
+        const filtered = allReports.filter(r => {
+          if (statusFilter && r.status !== statusFilter) return false;
+          if (typeFilter && r.report_type !== typeFilter) return false;
+          return true;
+        });
+        reportMarkersLayer.clearLayers();
+        filtered.forEach(rep => {
+          const icon = reportIcon(rep.report_type, rep.status);
+          const label = rep.report_type === 'no_current' ? 'No current' : rep.report_type.replace(/_/g, ' ');
+          const popup = `<b>${label}</b><br>${rep.description || ''}<br><small>${rep.status}</small><br>${formatDate(rep.created_at)}`;
+          const m = L.marker([rep.lat, rep.lng], { icon }).addTo(reportMarkersLayer).bindPopup(popup);
+          m.reportId = rep.id;
+        });
+        const tbody = document.getElementById('reportsTableBody');
+        tbody.innerHTML = filtered.length === 0
+          ? '<tr><td colspan="5" style="color:var(--text-muted);padding:1rem;text-align:center">No reports found</td></tr>'
+          : filtered.map(rep => {
+          const place = rep.place || `📍 ${rep.lat.toFixed(4)}, ${rep.lng.toFixed(4)}`;
+          const typeLabel = rep.report_type === 'no_current' ? 'No current' : rep.report_type.replace(/_/g, ' ');
+          const desc = (rep.description || '—').replace(/</g, '&lt;').substring(0, 60) + (rep.description && rep.description.length > 60 ? '…' : '');
+          return `<tr class="report-row" data-lat="${rep.lat}" data-lng="${rep.lng}"><td>${place}</td><td>${typeLabel}</td><td>${desc}</td><td>${rep.status}</td><td>${formatDate(rep.created_at)}</td></tr>`;
+        }).join('');
+        document.getElementById('reportsCount').textContent = filtered.length + ' reports';
+        tbody.querySelectorAll('.report-row').forEach(row => {
+          row.addEventListener('click', () => {
+            map.setView([parseFloat(row.dataset.lat), parseFloat(row.dataset.lng)], 15);
+            document.getElementById('reportsDataPanel').classList.add('collapsed');
+          });
+        });
+      }
+
       async function loadPowerReports() {
         try {
           const r = await fetch('/api/map/power-reports');
           const reports = await r.json();
           if (!Array.isArray(reports)) return;
-          reports.forEach(rep => {
-            const icon = reportIcon(rep.report_type, rep.status);
-            const label = rep.report_type === 'no_current' ? 'No current' : rep.report_type.replace(/_/g, ' ');
-            const popup = `<b>${label}</b><br>${rep.description || ''}<br><small>${rep.status}</small>`;
-            L.marker([rep.lat, rep.lng], { icon }).addTo(map).bindPopup(popup);
-          });
+          allReports = reports;
+          applyReportFilters();
+          if (reports.length > 0 && reports.length <= 8) {
+            reports.forEach((rep, i) => {
+              setTimeout(() => {
+                fetch('/api/reverse-geocode?lat=' + rep.lat + '&lng=' + rep.lng)
+                  .then(res => res.json())
+                  .then(d => { if (d.display_name) { rep.place = d.display_name; applyReportFilters(); } })
+                  .catch(() => {});
+              }, i * 1200);
+            });
+          }
         } catch (e) { console.warn('Power reports:', e); }
       }
+
+      document.getElementById('reportsStatusFilter').addEventListener('change', applyReportFilters);
+      document.getElementById('reportsTypeFilter').addEventListener('change', applyReportFilters);
 
       loadPowerData().then(loadPowerReports);
 

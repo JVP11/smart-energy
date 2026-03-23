@@ -5,6 +5,7 @@
     <title>Smart Energy Platform - {{ user_name }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/theme.js"></script>
   </head>
   <body>
     <header class="app-header">
@@ -13,6 +14,7 @@
         <p>Welcome, {{ user_name }} • Tariff: ₹{{ current_tariff }}/kWh</p>
       </div>
       <div class="header-btns">
+        <button type="button" id="themeToggle" onclick="themeToggle()" aria-label="Switch theme" title="Day / Night"></button>
         <a href="/user/dashboard" class="btn btn-outline">Dashboard</a>
         <a href="/logout" class="btn btn-primary">Logout</a>
       </div>
@@ -64,6 +66,22 @@
             <div><span class="metric-label">Min Panel (A)</span><span class="metric-value" id="panelSize">—</span></div>
           </div>
           <p id="loadSaveMsg" class="result-saved" style="margin-top:0.5rem;font-size:0.85rem;display:none">✓ Saved to database</p>
+
+          <details class="nec-guide" style="margin-top:1.5rem;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <summary style="padding:0.75rem 1rem;cursor:pointer;font-weight:600;background:var(--bg-panel);list-style:none">📋 NEC Load Classification Guide</summary>
+            <div style="padding:1rem;font-size:0.85rem;color:var(--text-muted);line-height:1.6">
+              <p><strong>Load Classification</strong> = grouping electrical loads by NEC rules for correct demand, wire size, breaker rating, safety, and distribution design.</p>
+              <ul style="margin:0.5rem 0;padding-left:1.25rem">
+                <li><strong>General Lighting</strong> — 3 VA/sq.ft (residential); watts per sq.ft</li>
+                <li><strong>Small Appliance</strong> — 1500 VA per circuit (kitchen/dining)</li>
+                <li><strong>Continuous Load</strong> — 3+ hours → use 125% of actual load</li>
+                <li><strong>Non-Continuous</strong> — &lt;3 hours → 100% load</li>
+                <li><strong>Motor Load</strong> — special factors for starting current</li>
+                <li><strong>Heating &amp; AC</strong> — high-power, calculated separately</li>
+              </ul>
+              <p><strong>Example (1000 sq.ft house):</strong> Lighting 1000×3=3000 VA; Small appliance 2×1500=3000 VA; Continuous adj. 3000×125%=3750 VA → <strong>Total 6750 VA</strong></p>
+            </div>
+          </details>
         </div>
       </section>
 

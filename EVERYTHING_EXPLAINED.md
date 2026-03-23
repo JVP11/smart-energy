@@ -176,6 +176,30 @@ An NEC-style electrical load calculator that estimates the **demand load** (peak
 
 **NEC in short:** The USA’s standard for safe electrical design. The Load Calculation in this app follows similar ideas (demand load, panel size) even though it’s for Kerala. India uses the Indian Electricity Rules and IS codes; the logic is similar.
 
+### NEC Load Classification
+
+**Load classification** = grouping electrical loads by NEC rules so engineers can correctly calculate:
+- electrical demand
+- wire size
+- breaker rating
+- safety protection
+- power distribution design
+
+| Classification | Description | NEC rule / example |
+|----------------|-------------|--------------------|
+| **General Lighting** | Lights, fans, plug points | 3 VA per sq.ft (residential) |
+| **Small Appliance** | Kitchen/dining (mixer, toaster, microwave) | 1500 VA per circuit |
+| **Continuous Load** | Runs 3+ hours continuously | 125% of actual load |
+| **Non-Continuous** | Runs &lt; 3 hours | 100% load |
+| **Motor Load** | Pumps, elevators, HVAC | Special starting-current factors |
+| **Heating & AC** | Electric heaters, air conditioners | Calculated separately |
+
+**Example (1000 sq.ft house):**
+1. General lighting: 1000 × 3 = 3000 VA
+2. Small appliance (2 circuits): 2 × 1500 = 3000 VA
+3. Continuous adjustment: 3000 × 125% = 3750 VA
+4. **Total classified load: 6750 VA** → used for breaker size, wiring, demand load.
+
 ---
 
 ## 8. How Bill Calculation Works

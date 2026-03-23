@@ -313,6 +313,32 @@ def api_geocode():
         return jsonify([])
 
 
+@app.route("/api/reverse-geocode")
+def api_reverse_geocode():
+    """Reverse geocode lat,lng to place name (Nominatim)."""
+    import json
+    import urllib.request
+    import urllib.parse
+    try:
+        lat = float(request.args.get("lat", 0))
+        lng = float(request.args.get("lng", 0))
+    except (TypeError, ValueError):
+        return jsonify({"display_name": ""})
+    if not (8 <= lat <= 13 and 74 <= lng <= 78):
+        return jsonify({"display_name": f"{lat:.4f}, {lng:.4f}"})
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse?" + urllib.parse.urlencode({
+            "lat": lat, "lon": lng, "format": "json", "zoom": 14
+        })
+        req = urllib.request.Request(url, headers={"User-Agent": "SmartEnergyPlatform/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+            return jsonify({"display_name": data.get("display_name", f"{lat:.4f}, {lng:.4f}")})
+    except Exception as e:
+        app.logger.warning("Reverse geocode: %s", e)
+        return jsonify({"display_name": f"{lat:.4f}, {lng:.4f}"})
+
+
 OVERPASS_SERVERS = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass-api.de/api/interpreter",
